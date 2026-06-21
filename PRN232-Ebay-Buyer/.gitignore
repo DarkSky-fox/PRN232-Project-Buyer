@@ -1,0 +1,79 @@
+## Ignore Visual Studio temporary files, build results
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Publish folder
+publish/
+*.publishsettings
+
+# Database files
+*.mdf
+*.ldf
+
+# Entity Framework
+Migrations/*.Designer.cs
+*.dbmdl
+
+# Local environment files
+appsettings.Development.json
+appsettings.Local.json
+
+# IIS Express
+iisexpress/
+
+# Test results
+TestResults/
+*.trx
+
+# Backup files
+*.bak
+
+# Node modules (nếu project có frontend)
+node_modules/
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Temporary files
+*.tmp
+*.temp
