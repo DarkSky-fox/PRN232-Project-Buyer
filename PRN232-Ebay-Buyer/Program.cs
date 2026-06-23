@@ -4,10 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── 1. Data Protection (dùng cho mã hóa/giải mã cookie) ─────────────────────
-builder.Services.AddDataProtection()
-    .SetApplicationName("PRN232_Ebay_Buyer")
-    .PersistKeysToFileSystem(
-        new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "Keys")));
+builder.Services.AddDataProtection();
 
 // ── 2. Razor Pages ─────────────────────────────────────────────────────────
 builder.Services.AddRazorPages();

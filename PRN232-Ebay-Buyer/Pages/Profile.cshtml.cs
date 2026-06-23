@@ -1,5 +1,5 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -39,9 +39,15 @@ public class ProfileModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        LoadUserFromClaims();
+        if (!User.Identity?.IsAuthenticated ?? true)
+        {
+            Message = "Session expired. Please log in again.";
+            IsSuccess = false;
+            return Page();
+        }
 
-        if (!IsAuthenticated)
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
         {
             Message = "Session expired. Please log in again.";
             IsSuccess = false;
@@ -59,45 +65,17 @@ public class ProfileModel : PageModel
 
         try
         {
-            // Log tat ca claims de debug
-            var allClaims = string.Join(" | ",
-                User.Claims.Select(c => $"{c.Type}={c.Value}"));
-            _logger.LogWarning("Profile POST - All claims: {Claims}", allClaims);
-            _logger.LogWarning("Profile POST - User.Identity.IsAuthenticated={IsAuth}",
-                User.Identity?.IsAuthenticated);
-
-            // Doc JWT tu Claims (da duoc luu khi dang nhap)
-            var token = User.FindFirst("jwt_token")?.Value ?? string.Empty;
-
-            _logger.LogWarning("Profile update attempt. IsAuthenticated={Auth}, JWT from claims present={HasToken}",
-                IsAuthenticated, !string.IsNullOrEmpty(token));
-
-            if (string.IsNullOrEmpty(token))
-            {
-                _logger.LogWarning("JWT token missing from claims");
-                Message = "Authentication token missing. Please log in again.";
-                IsSuccess = false;
-                IsLoading = false;
-                return Page();
-            }
-
-            var client = _httpClientFactory.CreateClient("AuthApi");
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
             var payload = new
             {
+                userId = int.Parse(userId),
                 username = Username.Trim(),
                 avatarUrl = AvatarUrl?.Trim()
             };
 
-            _logger.LogWarning("Sending PUT to /api/auth/update-profile with Bearer token prefix: {Prefix}",
-                token.Length > 20 ? token.Substring(0, 20) + "..." : token);
-
+            var client = _httpClientFactory.CreateClient("AuthApi");
             var response = await client.PutAsJsonAsync("/api/auth/update-profile", payload);
 
             var responseBody = await response.Content.ReadAsStringAsync();
-            _logger.LogWarning("API response: Status={Status}, Body={Body}", response.StatusCode, responseBody);
 
             if (response.IsSuccessStatusCode)
             {
@@ -106,9 +84,52 @@ public class ProfileModel : PageModel
 
                 if (result?.Success == true && result.Data is not null)
                 {
+                    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                    if (!string.IsNullOrEmpty(result.Data.NewToken) &&
+                        !string.IsNullOrEmpty(userIdClaim))
+                    {
+                        var claims = new List<Claim>
+                        {
+                            new(ClaimTypes.NameIdentifier, result.Data.Id.ToString()),
+                            new(ClaimTypes.Name, result.Data.Username),
+                            new(ClaimTypes.Email, result.Data.Email),
+                            new(ClaimTypes.Role, result.Data.Role)
+                        };
+
+                        var claimsIdentity = new ClaimsIdentity(
+                            claims,
+                            CookieAuthenticationDefaults.AuthenticationScheme);
+
+                        var authProperties = new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
+                        };
+
+                        await HttpContext.SignOutAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme);
+
+                        await HttpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            new ClaimsPrincipal(claimsIdentity),
+                            authProperties);
+
+                        Response.Cookies.Append("BearerToken", result.Data.NewToken,
+                            new CookieOptions
+                            {
+                                HttpOnly = false,
+                                SameSite = SameSiteMode.Lax,
+                                Expires = DateTimeOffset.UtcNow.AddHours(1)
+                            });
+                    }
+
                     Email = result.Data.Email;
                     Role = result.Data.Role;
+                    Username = result.Data.Username;
                     AvatarUrl = result.Data.AvatarUrl ?? string.Empty;
+                    IsAuthenticated = true;
 
                     Message = "Profile updated successfully!";
                     IsSuccess = true;
@@ -183,6 +204,7 @@ public class ProfileModel : PageModel
         string Username,
         string Email,
         string Role,
-        string? AvatarUrl
+        string? AvatarUrl,
+        string? NewToken
     );
 }
