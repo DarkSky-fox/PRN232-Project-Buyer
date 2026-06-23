@@ -130,17 +130,6 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ── 6. HTTP pipeline ─────────────────────────────────────────────────────────
-app.Use(async (context, next) =>
-{
-    if (context.Request.Cookies.TryGetValue("BearerToken", out var token)
-        && !string.IsNullOrEmpty(token))
-    {
-        context.Request.Headers.Authorization = $"Bearer {token}";
-        context.Response.Cookies.Delete("BearerToken");
-    }
-    await next();
-});
-
 app.UseCors("AllowFrontend");
 
 if (app.Environment.IsDevelopment())

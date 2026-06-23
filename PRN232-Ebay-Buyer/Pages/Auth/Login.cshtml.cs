@@ -76,14 +76,13 @@ public class LoginModel : PageModel
                         Expires = loginData.ExpiresAt
                     });
 
-                    // Tao Claims Identity cho Cookie Authentication (luu userId va JWT)
+                    // Tao Claims Identity cho Cookie Authentication (luu userId, khong luu token)
                     var claims = new[]
                     {
                         new Claim(ClaimTypes.NameIdentifier, userId),
                         new Claim(ClaimTypes.Name,           username),
                         new Claim(ClaimTypes.Email,          email),
-                        new Claim(ClaimTypes.Role,          role),
-                        new Claim("jwt_token",              loginData.Token)
+                        new Claim(ClaimTypes.Role,          role)
                     };
 
                     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -98,8 +97,7 @@ public class LoginModel : PageModel
                             ExpiresUtc = loginData.ExpiresAt
                         });
 
-                    _logger.LogInformation("User {Email} logged in successfully. JWT token length={Len}",
-                        Email, loginData.Token.Length);
+                    _logger.LogInformation("User {Email} logged in successfully.", Email);
 
                     return RedirectToPage("/Index");
                 }
