@@ -1,0 +1,538 @@
+@page "{id:int}"
+@model PRN232_Ebay_Buyer.Pages.OrderDetailModel
+@{
+    ViewData["Title"] = Model.Order != null ? $"Đơn hàng #{Model.Order.Id}" : "Chi tiết đơn hàng";
+    var order = Model.Order;
+
+    // Status style map
+    var statusStyles = new Dictionary<string, (string Bg, string Text, string Icon)>
+    {
+        ["Pending"]    = ("#fff3cd", "#856404", "🕐"),
+        ["Processing"] = ("#cce5ff", "#004085", "⚙️"),
+        ["Shipped"]    = ("#e2d9f3", "#6f42c1", "🚚"),
+        ["Delivered"]  = ("#d4edda", "#155724", "✅"),
+        ["Cancelled"]  = ("#f8d7da", "#721c24", "❌"),
+    };
+    (string Bg, string Text, string Icon) GetStyle(string? s)
+        => s != null && statusStyles.TryGetValue(s, out var v) ? v : ("#e9ecef", "#495057", "📦");
+
+    var st = GetStyle(order?.Status);
+
+    // Cancelled/Return statuses
+    var cancelable = new[] { "Pending", "Processing", "Shipped" };
+    var returnable = new[] { "Delivered" };
+    bool canCancel = cancelable.Contains(order?.Status) && order?.ReturnRequest == null;
+    bool canReturn = returnable.Contains(order?.Status) && order?.ReturnRequest == null;
+}
+
+<style>
+    .detail-page { max-width: 960px; margin: 0 auto; }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb-nav { padding: 12px 0; margin-bottom: 20px; }
+    .breadcrumb-nav a { color: #6c757d; text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .breadcrumb-nav a:hover { color: #e94560; }
+    .breadcrumb-nav .sep { color: #dee2e6; margin: 0 8px; }
+    .breadcrumb-nav .cur { color: #1a1a2e; font-weight: 600; font-size: 0.9rem; }
+
+    /* ── Alert ── */
+    .alert-custom {
+        padding: 14px 20px; border-radius: 12px;
+        margin-bottom: 20px; font-size: 0.9rem; font-weight: 500;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .alert-error   { background: #fdf0f2; border: 1px solid #fbd0d8; color: #c0392b; }
+    .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+    /* ── Card ── */
+    .info-card {
+        background: white; border-radius: 16px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        border: 1px solid #e8ecf1; margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .info-card-header {
+        padding: 16px 20px; border-bottom: 1px solid #f0f2f5;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 8px;
+    }
+    .info-card-header h5 {
+        font-weight: 700; color: #1a1a2e; margin: 0;
+        font-size: 1rem; display: flex; align-items: center; gap: 8px;
+    }
+    .info-card-body { padding: 20px; }
+
+    /* ── Status Badge ── */
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 16px; border-radius: 20px;
+        font-size: 0.85rem; font-weight: 700;
+    }
+
+    /* ── Order Item ── */
+    .order-item {
+        display: flex; align-items: center; gap: 16px;
+        padding: 14px 0; border-bottom: 1px solid #f0f2f5;
+    }
+    .order-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .item-img {
+        width: 72px; height: 72px; border-radius: 10px;
+        object-fit: cover; flex-shrink: 0;
+        border: 1px solid #e8ecf1; background: #f8f9fa;
+    }
+    .item-img-placeholder {
+        width: 72px; height: 72px; border-radius: 10px;
+        background: linear-gradient(135deg, #f0f2f5, #e9ecef);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; flex-shrink: 0;
+    }
+    .item-info { flex: 1; }
+    .item-title {
+        font-weight: 600; color: #1a1a2e; font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+    .item-qty { font-size: 0.82rem; color: #6c757d; }
+    .item-price {
+        font-weight: 700; color: #e94560;
+        font-size: 1rem; white-space: nowrap;
+    }
+    .btn-review {
+        padding: 6px 14px; border-radius: 8px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white; font-size: 0.8rem; font-weight: 600;
+        border: none; cursor: pointer;
+        transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-review:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(243,156,18,0.4); }
+
+    /* ── Info Grid ── */
+    .info-grid { display: grid; gap: 8px; }
+    .info-row { display: flex; gap: 8px; font-size: 0.9rem; }
+    .info-label { color: #adb5bd; min-width: 100px; }
+    .info-value { color: #1a1a2e; font-weight: 500; }
+
+    /* ── Total Row ── */
+    .total-row {
+        padding: 16px 20px;
+        border-top: 2px solid #f0f2f5;
+        background: #fafbfc;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .total-label { font-size: 0.95rem; color: #6c757d; font-weight: 600; }
+    .total-value { font-size: 1.4rem; font-weight: 800; color: #e94560; }
+
+    /* ── Return Card ── */
+    .return-card {
+        background: white; border-radius: 16px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        border: 1px solid #e8ecf1; margin-bottom: 20px;
+    }
+    .return-existing {
+        padding: 16px 20px;
+        background: #fffbeb; border-radius: 12px;
+        border: 1px solid #fde68a; margin: 0 20px 20px;
+    }
+    .return-existing-label { font-size: 0.8rem; color: #92400e; font-weight: 700; margin-bottom: 4px; }
+    .return-existing-reason { font-size: 0.9rem; color: #78350f; }
+
+    /* ── Form elements ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { font-size: 0.85rem; font-weight: 600; color: #495057; margin-bottom: 6px; display: block; }
+    .form-control-custom {
+        width: 100%; padding: 10px 14px;
+        border: 1px solid #dee2e6; border-radius: 10px;
+        font-size: 0.9rem; color: #495057;
+        transition: border-color 0.2s;
+        font-family: inherit; resize: vertical;
+    }
+    .form-control-custom:focus { outline: none; border-color: #e94560; box-shadow: 0 0 0 3px rgba(233,69,96,0.1); }
+    .form-select-custom {
+        width: 100%; padding: 10px 14px;
+        border: 1px solid #dee2e6; border-radius: 10px;
+        font-size: 0.9rem; color: #495057; background: white;
+        appearance: none;
+    }
+    .btn-submit {
+        padding: 10px 28px; border-radius: 10px;
+        background: linear-gradient(135deg, #e94560, #c0392b);
+        color: white; font-weight: 700; font-size: 0.9rem;
+        border: none; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(233,69,96,0.35); }
+    .btn-cancel-form {
+        padding: 10px 20px; border-radius: 10px;
+        background: #f0f2f5; color: #6c757d;
+        font-weight: 600; font-size: 0.9rem;
+        border: none; cursor: pointer;
+    }
+
+    /* ── Star Rating ── */
+    .star-rating { display: flex; gap: 6px; margin-bottom: 12px; }
+    .star-btn {
+        font-size: 1.8rem; cursor: pointer; background: none;
+        border: none; color: #dee2e6; transition: color 0.15s, transform 0.15s;
+        padding: 0; line-height: 1;
+    }
+    .star-btn:hover, .star-btn.selected { color: #f39c12; transform: scale(1.15); }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5); z-index: 1000;
+        align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 20px; padding: 28px;
+        width: 100%; max-width: 480px; margin: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        animation: slideUp 0.3s ease;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; }
+    @@keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .info-card { animation: fadeIn 0.4s ease both; }
+    .info-card:nth-child(1) { animation-delay: 0s; }
+    .info-card:nth-child(2) { animation-delay: 0.07s; }
+    .info-card:nth-child(3) { animation-delay: 0.12s; }
+</style>
+
+<div class="detail-page">
+
+    <!-- ═══ Breadcrumb ═══ -->
+    <div class="breadcrumb-nav">
+        <a asp-page="/Index">Home</a>
+        <span class="sep">›</span>
+        <a asp-page="/Orders">Đơn hàng</a>
+        @if (order != null)
+        {
+            <span class="sep">›</span>
+            <span class="cur">Đơn #@order.Id</span>
+        }
+    </div>
+
+    <!-- ═══ Alerts ═══ -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert-custom alert-success">@Model.SuccessMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert-custom alert-error">@Model.ErrorMessage</div>
+    }
+
+    @if (order == null)
+    {
+        <div class="info-card" style="padding: 60px; text-align:center;">
+            <div style="font-size:4rem; margin-bottom:16px;">😔</div>
+            <h4 style="color:#495057;">Không tìm thấy đơn hàng</h4>
+            <a asp-page="/Orders" style="display:inline-block; margin-top:16px; padding:10px 24px; border-radius:10px; background:#e94560; color:white; text-decoration:none; font-weight:600;">← Quay lại</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- ── Left column ── -->
+            <div class="col-lg-8">
+
+                <!-- ═══ Order Items ═══ -->
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <h5>🛍️ Sản phẩm trong đơn</h5>
+                        <span class="status-badge" style="background:@st.Bg; color:@st.Text;">
+                            @st.Icon @order.Status
+                        </span>
+                    </div>
+                    <div class="info-card-body" style="padding-bottom:0;">
+                        @if (order.Items?.Any() == true)
+                        {
+                            @foreach (var item in order.Items)
+                            {
+                                <div class="order-item">
+                                    @if (!string.IsNullOrEmpty(item.ProductImage))
+                                    {
+                                        <img src="@item.ProductImage" alt="@item.ProductTitle" class="item-img"
+                                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                                        <div class="item-img-placeholder" style="display:none;">📦</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="item-img-placeholder">📦</div>
+                                    }
+                                    <div class="item-info">
+                                        <div class="item-title">@item.ProductTitle</div>
+                                        <div class="item-qty">
+                                            Số lượng: @item.Quantity × $@item.UnitPrice.ToString("N2")
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                                        <div class="item-price">$@item.SubTotal.ToString("N2")</div>
+                                        @if (order.Status == "Delivered")
+                                        {
+                                            <button class="btn-review"
+                                                    onclick="openReviewModal(@item.ProductId, '@item.ProductTitle?.Replace("'","\'")' )">
+                                                ⭐ Đánh giá
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p style="color:#adb5bd; text-align:center; padding:20px 0;">Không có sản phẩm nào.</p>
+                        }
+                    </div>
+                    <div class="total-row">
+                        <span class="total-label">Tổng cộng</span>
+                        <span class="total-value">$@(order.TotalPrice?.ToString("N2") ?? "0.00")</span>
+                    </div>
+                </div>
+
+                <!-- ═══ Return / Cancel Section ═══ -->
+                <div class="info-card return-card">
+                    <div class="info-card-header">
+                        <h5>🔄 Huỷ / Hoàn trả đơn hàng</h5>
+                    </div>
+                    <div class="info-card-body">
+                        @if (order.ReturnRequest != null)
+                        {
+                            var rr = order.ReturnRequest;
+                            <div class="return-existing">
+                                <div class="return-existing-label">
+                                    @(rr.Type == "Cancel" ? "🚫 Yêu cầu huỷ đơn" : "📦 Yêu cầu hoàn trả")
+                                    — Trạng thái: <strong>@rr.Status</strong>
+                                </div>
+                                <div class="return-existing-reason">Lý do: @rr.Reason</div>
+                                <div style="font-size:0.78rem; color:#92400e; margin-top:4px;">
+                                    Gửi lúc: @(rr.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")
+                                </div>
+                            </div>
+                        }
+                        else if (canCancel || canReturn)
+                        {
+                            <p style="font-size:0.88rem; color:#6c757d; margin-bottom:16px;">
+                                @if (canCancel)
+                                {
+                                    <text>Đơn hàng đang ở trạng thái <strong>@order.Status</strong> — bạn có thể <strong>huỷ</strong> trước khi giao.</text>
+                                }
+                                else
+                                {
+                                    <text>Đơn hàng đã giao — bạn có thể gửi yêu cầu <strong>hoàn trả</strong> nếu có vấn đề.</text>
+                                }
+                            </p>
+
+                            <form method="post" asp-page-handler="Return">
+                                <input type="hidden" name="orderId" value="@order.Id" />
+                                <input type="hidden" name="type" value="@(canCancel ? "Cancel" : "Return")" />
+                                <div class="form-group">
+                                    <label>Lý do *</label>
+                                    <textarea name="reason" rows="3" class="form-control-custom"
+                                              placeholder="@(canCancel ? "Vui lòng cho biết lý do huỷ đơn..." : "Mô tả vấn đề với sản phẩm nhận được...")"
+                                              required></textarea>
+                                </div>
+                                <button type="submit" class="btn-submit">
+                                    @(canCancel ? "🚫 Gửi yêu cầu huỷ" : "📦 Gửi yêu cầu hoàn trả")
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div style="text-align:center; padding:20px; color:#adb5bd; font-size:0.9rem;">
+                                <div style="font-size:2rem; margin-bottom:8px;">ℹ️</div>
+                                Không thể huỷ hoặc hoàn trả đơn hàng ở trạng thái <strong>@order.Status</strong>.
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ── Right column ── -->
+            <div class="col-lg-4">
+
+                <!-- ═══ Order Info ═══ -->
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <h5>📋 Thông tin đơn hàng</h5>
+                    </div>
+                    <div class="info-card-body">
+                        <div class="info-grid">
+                            <div class="info-row">
+                                <span class="info-label">Mã đơn</span>
+                                <span class="info-value">#@order.Id</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Ngày đặt</span>
+                                <span class="info-value">@(order.OrderDate?.ToString("dd/MM/yyyy") ?? "—")</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Trạng thái</span>
+                                <span class="status-badge" style="background:@st.Bg; color:@st.Text; padding:3px 10px; font-size:0.75rem;">
+                                    @st.Icon @order.Status
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ Address ═══ -->
+                @if (order.Address != null)
+                {
+                    var addr = order.Address;
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <h5>📍 Địa chỉ giao hàng</h5>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-grid">
+                                <div class="info-row">
+                                    <span class="info-label">Người nhận</span>
+                                    <span class="info-value">@addr.FullName</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Điện thoại</span>
+                                    <span class="info-value">@addr.Phone</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Địa chỉ</span>
+                                    <span class="info-value">@addr.Street, @addr.City, @addr.Country</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- ═══ Payment ═══ -->
+                @if (order.Payment != null)
+                {
+                    var pay = order.Payment;
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <h5>💳 Thanh toán</h5>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-grid">
+                                <div class="info-row">
+                                    <span class="info-label">Phương thức</span>
+                                    <span class="info-value">@pay.Method</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Số tiền</span>
+                                    <span class="info-value" style="color:#e94560; font-weight:700;">
+                                        $@(pay.Amount?.ToString("N2") ?? "0.00")
+                                    </span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Trạng thái</span>
+                                    <span class="info-value">@pay.Status</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- ═══ Shipping ═══ -->
+                @if (order.Shipping != null)
+                {
+                    var ship = order.Shipping;
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <h5>🚚 Vận chuyển</h5>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-grid">
+                                <div class="info-row">
+                                    <span class="info-label">Đơn vị</span>
+                                    <span class="info-value">@ship.Carrier</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Tracking</span>
+                                    <span class="info-value" style="font-family:monospace;">@ship.TrackingNumber</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Dự kiến</span>
+                                    <span class="info-value">@(ship.EstimatedArrival?.ToString("dd/MM/yyyy") ?? "—")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    }
+</div>
+
+<!-- ═══ Review Modal ═══ -->
+<div class="modal-overlay" id="reviewModal">
+    <div class="modal-box">
+        <div class="modal-title">⭐ Đánh giá sản phẩm</div>
+        <p id="reviewProductName" style="font-size:0.9rem; color:#6c757d; margin-bottom:16px;"></p>
+
+        <form method="post" asp-page-handler="Review" id="reviewForm">
+            <input type="hidden" name="orderId" value="@(order?.Id ?? 0)" />
+            <input type="hidden" name="productId" id="reviewProductId" />
+            <input type="hidden" name="rating" id="ratingInput" value="5" />
+
+            <div class="form-group">
+                <label>Số sao *</label>
+                <div class="star-rating" id="starRating">
+                    @for (int s = 1; s <= 5; s++)
+                    {
+                        <button type="button" class="star-btn @(s <= 5 ? "selected" : "")"
+                                data-star="@s" onclick="setRating(@s)">★</button>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Nhận xét (tuỳ chọn)</label>
+                <textarea name="comment" rows="4" class="form-control-custom"
+                          placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn-cancel-form" onclick="closeReviewModal()">Huỷ</button>
+                <button type="submit" class="btn-submit">⭐ Gửi đánh giá</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let currentRating = 5;
+
+    function openReviewModal(productId, productName) {
+        document.getElementById('reviewProductId').value = productId;
+        document.getElementById('reviewProductName').textContent = productName;
+        document.getElementById('reviewModal').classList.add('open');
+        setRating(5);
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewModal').classList.remove('open');
+    }
+
+    function setRating(rating) {
+        currentRating = rating;
+        document.getElementById('ratingInput').value = rating;
+        document.querySelectorAll('.star-btn').forEach((btn, idx) => {
+            btn.classList.toggle('selected', idx < rating);
+        });
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('reviewModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReviewModal();
+    });
+</script>
+}
