@@ -1,0 +1,83 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.ProfileModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">My Profile</h3>
+
+                    @if (!string.IsNullOrEmpty(Model.Message))
+                    {
+                        <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @Model.Message
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (!Model.IsAuthenticated)
+                    {
+                        <div class="alert alert-warning text-center">
+                            <p class="mb-0">You are not logged in.</p>
+                            <a asp-page="/Auth/Login" class="btn btn-sm btn-primary mt-2">Sign In</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <form method="post">
+                            <div class="text-center mb-4">
+                                <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/images/default-avatar.png" : Model.AvatarUrl)"
+                                     alt="Avatar" class="rounded-circle"
+                                     style="width: 100px; height: 100px; object-fit: cover;" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="username">Username</label>
+                                <input type="text" class="form-control" id="username"
+                                       asp-for="Username" placeholder="Enter your username" />
+                                <span class="text-danger" asp-validation-for="Username"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="email">Email</label>
+                                <input type="email" class="form-control" id="email"
+                                       value="@Model.Email" readonly />
+                                <small class="text-muted">Email cannot be changed.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="role">Role</label>
+                                <input type="text" class="form-control" id="role"
+                                       value="@Model.Role" readonly />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" for="avatarUrl">Avatar URL</label>
+                                <input type="url" class="form-control" id="avatarUrl"
+                                       asp-for="AvatarUrl"
+                                       placeholder="https://example.com/avatar.jpg" />
+                                <span class="text-danger" asp-validation-for="AvatarUrl"></span>
+                                <small class="text-muted">Paste a URL to your new avatar image.</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100" disabled="@Model.IsLoading">
+                                @(Model.IsLoading ? "Saving..." : "Save Changes")
+                            </button>
+
+                            <div class="text-center mt-3">
+                                <a asp-page="/Auth/Login" asp-page-handler="Logout"
+                                   class="btn btn-outline-danger btn-sm">
+                                    Sign Out
+                                </a>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

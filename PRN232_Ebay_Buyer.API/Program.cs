@@ -1,0 +1,117 @@
+using System.Text;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using PRN232_Ebay_Buyer.API.Models;
+using PRN232_Ebay_Buyer.API.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── 1. DbContext ────────────────────────────────────────────────────────────
+builder.Services.AddDbContext<CloneEbayDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// ── 2. Services ─────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IJwtService, JwtService>();
+
+// ── 3. Memory Cache (dùng cho verification token) ──────────────────────────
+builder.Services.AddMemoryCache();
+
+// ── 3. JWT Authentication / Authorization ───────────────────────────────────
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(5)
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            var logger = context.HttpContext.RequestServices
+                .GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("JWT Auth Failed: {Error}", context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnMessageReceived = context =>
+        {
+            var logger = context.HttpContext.RequestServices
+                .GetRequiredService<ILogger<Program>>();
+            var token = context.Token;
+            logger.LogWarning("JWT OnMessageReceived: token present={HasToken}, token prefix={Prefix}",
+                !string.IsNullOrEmpty(token),
+                !string.IsNullOrEmpty(token) && token.Length > 20 ? token.Substring(0, 20) + "..." : token ?? "");
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// ── 4. Controllers & JSON options ───────────────────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            JsonIgnoreCondition.WhenWritingNull;
+    });
+
+// ── 5. CORS (cho phép Frontend gọi API) ─────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        var frontendUrl = builder.Configuration.GetValue<string>("FrontendUrl")
+            ?? "http://localhost:5000";
+        policy.WithOrigins(frontendUrl)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+var app = builder.Build();
+
+// ── 6. HTTP pipeline ─────────────────────────────────────────────────────────
+app.Use(async (context, next) =>
+{
+    if (context.Request.Cookies.TryGetValue("BearerToken", out var token)
+        && !string.IsNullOrEmpty(token))
+    {
+        context.Request.Headers.Authorization = $"Bearer {token}";
+        context.Response.Cookies.Delete("BearerToken");
+    }
+    await next();
+});
+
+app.UseCors("AllowFrontend");
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();

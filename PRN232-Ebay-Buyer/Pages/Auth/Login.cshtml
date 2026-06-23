@@ -1,0 +1,52 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Auth.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">Sign In</h3>
+
+                    @if (!string.IsNullOrEmpty(Model.Message))
+                    {
+                        <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @Model.Message
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label" for="email">Email</label>
+                            <input type="email" class="form-control" id="email"
+                                   asp-for="Email" placeholder="Enter your email"
+                                   autocomplete="email" />
+                            <span class="text-danger" asp-validation-for="Email"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="password">Password</label>
+                            <input type="password" class="form-control" id="password"
+                                   asp-for="Password" placeholder="Enter your password"
+                                   autocomplete="current-password" />
+                            <span class="text-danger" asp-validation-for="Password"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" disabled="@Model.IsLoading">
+                            @(Model.IsLoading ? "Signing in..." : "Sign In")
+                        </button>
+                    </form>
+
+                    <p class="text-center mt-3 mb-0">
+                        Don't have an account?
+                        <a asp-page="/Auth/Register">Register now</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

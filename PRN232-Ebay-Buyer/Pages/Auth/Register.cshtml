@@ -1,0 +1,64 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Auth.RegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">Create Account</h3>
+
+                    @if (!string.IsNullOrEmpty(Model.Message))
+                    {
+                        <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @Model.Message
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label" for="username">Username</label>
+                            <input type="text" class="form-control" id="username"
+                                   asp-for="Username" placeholder="Enter your username" />
+                            <span class="text-danger" asp-validation-for="Username"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="email">Email</label>
+                            <input type="email" class="form-control" id="email"
+                                   asp-for="Email" placeholder="Enter your email" />
+                            <span class="text-danger" asp-validation-for="Email"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="password">Password</label>
+                            <input type="password" class="form-control" id="password"
+                                   asp-for="Password" placeholder="Enter your password" />
+                            <span class="text-danger" asp-validation-for="Password"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="confirmPassword">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirmPassword"
+                                   asp-for="ConfirmPassword" placeholder="Confirm your password" />
+                            <span class="text-danger" asp-validation-for="ConfirmPassword"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" disabled="@Model.IsLoading">
+                            @(Model.IsLoading ? "Registering..." : "Register")
+                        </button>
+                    </form>
+
+                    <p class="text-center mt-3 mb-0">
+                        Already have an account?
+                        <a asp-page="/Auth/Login">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
