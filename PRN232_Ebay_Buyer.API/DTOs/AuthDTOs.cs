@@ -14,6 +14,7 @@ public record LoginRequest(
 );
 
 public record UpdateProfileRequest(
+    int? UserId,
     string? Username,
     string? AvatarUrl
 );
@@ -45,5 +46,6 @@ public record UserProfileResponse(
     string Username,
     string Email,
     string Role,
-    string? AvatarUrl
+    string? AvatarUrl,
+    string? NewToken
 );

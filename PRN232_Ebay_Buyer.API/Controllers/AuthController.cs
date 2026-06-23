@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -170,23 +169,20 @@ public class AuthController : ControllerBase
     }
 
     // ─── PUT /api/auth/update-profile ──────────────────────────────────────
-    [Authorize]
     [HttpPut("update-profile")]
     public async Task<ActionResult<ApiResponse<UserProfileResponse>>> UpdateProfile(
         [FromBody] UpdateProfileRequest request)
     {
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        _logger.LogWarning("[UpdateProfile] All claims: {Claims}, NameIdentifier={Claim}",
-            string.Join(" | ", User.Claims.Select(c => $"{c.Type}={c.Value}")),
-            userIdClaim);
+        _logger.LogWarning("UpdateProfile called - UserId={U}, Username={UN}, AvatarUrl={A}",
+            request.UserId, request.Username, request.AvatarUrl);
 
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        if (request.UserId == null || request.UserId <= 0)
         {
             return Unauthorized(new ApiResponse<UserProfileResponse>(
-                false, "Invalid token payload.", null));
+                false, "Invalid user.", null));
         }
 
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.FindAsync(request.UserId);
 
         if (user is null)
         {
@@ -204,9 +200,19 @@ public class AuthController : ControllerBase
             user.AvatarUrl = request.AvatarUrl.Trim();
         }
 
+        _logger.LogWarning("Before SaveChanges - Username={U}, AvatarUrl={A}, EntryState={S}",
+            user.Username, user.AvatarUrl, _db.Entry(user).State);
         await _db.SaveChangesAsync();
+        _logger.LogWarning("After SaveChanges - Username={U}, AvatarUrl={A}, EntryState={S}",
+            user.Username, user.AvatarUrl, _db.Entry(user).State);
 
-        _logger.LogInformation("Profile updated for user {UserId}.", userId);
+        var newToken = _jwtService.GenerateToken(
+            user.Id,
+            user.Username ?? string.Empty,
+            user.Email ?? string.Empty,
+            user.Role ?? "User");
+
+        _logger.LogInformation("Profile updated for user {UserId}. New token generated.", request.UserId);
 
         return Ok(new ApiResponse<UserProfileResponse>(
             true,
@@ -216,7 +222,8 @@ public class AuthController : ControllerBase
                 user.Username ?? string.Empty,
                 user.Email ?? string.Empty,
                 user.Role ?? "User",
-                user.AvatarUrl)));
+                user.AvatarUrl,
+                newToken)));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────
