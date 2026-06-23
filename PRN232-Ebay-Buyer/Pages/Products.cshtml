@@ -1,0 +1,786 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.ProductsModel
+@{
+    ViewData["Title"] = "Products";
+}
+
+<style>
+    /* ── Products Page Styles ── */
+    .products-page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 32px 40px;
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(233, 69, 96, 0.15), transparent);
+        border-radius: 50%;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        position: relative;
+    }
+
+    .page-header p {
+        opacity: 0.8;
+        margin-bottom: 0;
+        position: relative;
+    }
+
+    /* ── Search Bar ── */
+    .search-section {
+        background: white;
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        margin-bottom: 24px;
+        border: 1px solid #e8ecf1;
+    }
+
+    .search-input-group {
+        position: relative;
+    }
+
+    .search-input-group input {
+        border: 2px solid #e8ecf1;
+        border-radius: 10px;
+        padding: 12px 16px 12px 44px;
+        font-size: 0.95rem;
+        transition: border-color 0.3s;
+        width: 100%;
+    }
+
+    .search-input-group input:focus {
+        border-color: #e94560;
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
+        outline: none;
+    }
+
+    .search-input-group .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+        font-size: 1.1rem;
+    }
+
+    .btn-search {
+        background: linear-gradient(135deg, #e94560, #c0392b);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 28px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-search:hover {
+        background: linear-gradient(135deg, #c0392b, #a93226);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+    }
+
+    .btn-reset {
+        background: #f8f9fa;
+        color: #6c757d;
+        border: 2px solid #e8ecf1;
+        border-radius: 10px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-reset:hover {
+        background: #e9ecef;
+        color: #495057;
+    }
+
+    /* ── Filter Sidebar ── */
+    .filter-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e8ecf1;
+        margin-bottom: 20px;
+    }
+
+    .filter-card h5 {
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 16px;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-card h5 .filter-icon {
+        font-size: 1.1rem;
+    }
+
+    .category-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .category-list li {
+        margin-bottom: 4px;
+    }
+
+    .category-list li a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #495057;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .category-list li a:hover,
+    .category-list li a.active {
+        background: #fff0f3;
+        color: #e94560;
+    }
+
+    .category-list li a.active {
+        font-weight: 600;
+    }
+
+    .category-count {
+        background: #f0f2f5;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .category-list li a.active .category-count {
+        background: #fde2e7;
+        color: #e94560;
+    }
+
+    .price-input {
+        border: 2px solid #e8ecf1;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+
+    .price-input:focus {
+        border-color: #e94560;
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
+        outline: none;
+    }
+
+    .btn-filter {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s;
+    }
+
+    .btn-filter:hover {
+        background: linear-gradient(135deg, #16213e, #0f3460);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    /* ── Sort Bar ── */
+    .sort-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .result-count {
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .result-count strong {
+        color: #1a1a2e;
+    }
+
+    .sort-select {
+        border: 2px solid #e8ecf1;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        min-width: 200px;
+    }
+
+    .sort-select:focus {
+        border-color: #e94560;
+        box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
+        outline: none;
+    }
+
+    /* ── Product Cards ── */
+    .product-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e8ecf1;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+        border-color: #e94560;
+    }
+
+    .product-image-wrapper {
+        position: relative;
+        width: 100%;
+        padding-top: 75%;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        overflow: hidden;
+    }
+
+    .product-image-wrapper img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s;
+    }
+
+    .product-card:hover .product-image-wrapper img {
+        transform: scale(1.08);
+    }
+
+    .product-image-placeholder {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 3rem;
+        color: #dee2e6;
+    }
+
+    .badge-auction {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        z-index: 1;
+    }
+
+    .product-body {
+        padding: 16px 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-category {
+        font-size: 0.78rem;
+        color: #e94560;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+
+    .product-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.4;
+    }
+
+    .product-description {
+        font-size: 0.85rem;
+        color: #6c757d;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 12px;
+        flex: 1;
+    }
+
+    .product-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 12px;
+        border-top: 1px solid #f0f2f5;
+    }
+
+    .product-price {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #e94560;
+    }
+
+    .product-seller {
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+
+    .product-seller strong {
+        color: #6c757d;
+    }
+
+    /* ── Pagination ── */
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 32px;
+    }
+
+    .pagination .page-item .page-link {
+        border: none;
+        color: #495057;
+        padding: 10px 16px;
+        margin: 0 3px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .pagination .page-item .page-link:hover {
+        background: #fff0f3;
+        color: #e94560;
+    }
+
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #e94560, #c0392b);
+        color: white;
+        box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+    }
+
+    .pagination .page-item.disabled .page-link {
+        color: #dee2e6;
+        background: transparent;
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state .empty-icon {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h4 {
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    /* ── Error State ── */
+    .error-alert {
+        background: #fff5f5;
+        border: 1px solid #fed7d7;
+        color: #c0392b;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+
+    /* ── Animations ── */
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .product-card {
+        animation: fadeInUp 0.5s ease forwards;
+    }
+
+    .product-card:nth-child(1) { animation-delay: 0.05s; }
+    .product-card:nth-child(2) { animation-delay: 0.1s; }
+    .product-card:nth-child(3) { animation-delay: 0.15s; }
+    .product-card:nth-child(4) { animation-delay: 0.2s; }
+    .product-card:nth-child(5) { animation-delay: 0.25s; }
+    .product-card:nth-child(6) { animation-delay: 0.3s; }
+    .product-card:nth-child(7) { animation-delay: 0.35s; }
+    .product-card:nth-child(8) { animation-delay: 0.4s; }
+    .product-card:nth-child(9) { animation-delay: 0.45s; }
+    .product-card:nth-child(10) { animation-delay: 0.5s; }
+    .product-card:nth-child(11) { animation-delay: 0.55s; }
+    .product-card:nth-child(12) { animation-delay: 0.6s; }
+</style>
+
+<div class="products-page">
+    <!-- ═══ Header ═══ -->
+    <div class="page-header">
+        <h1>🛒 Browse Products</h1>
+        <p>Discover amazing deals from sellers around the world</p>
+    </div>
+
+    <!-- ═══ Search Bar ═══ -->
+    <form method="get" class="search-section">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-7">
+                <div class="search-input-group">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" name="Search" value="@Model.Search"
+                           placeholder="Search products by name..." />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="SortBy" class="sort-select" style="width: 100%;">
+                    <option value="">Sort by: Newest</option>
+                    <option value="price_asc" selected="@(Model.SortBy == "price_asc")">Price: Low to High</option>
+                    <option value="price_desc" selected="@(Model.SortBy == "price_desc")">Price: High to Low</option>
+                    <option value="name_asc" selected="@(Model.SortBy == "name_asc")">Name: A → Z</option>
+                    <option value="name_desc" selected="@(Model.SortBy == "name_desc")">Name: Z → A</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-search flex-fill">Search</button>
+            </div>
+        </div>
+
+        <!-- Preserve hidden fields for filters -->
+        @if (Model.CategoryId.HasValue)
+        {
+            <input type="hidden" name="CategoryId" value="@Model.CategoryId" />
+        }
+        @if (Model.MinPrice.HasValue)
+        {
+            <input type="hidden" name="MinPrice" value="@Model.MinPrice" />
+        }
+        @if (Model.MaxPrice.HasValue)
+        {
+            <input type="hidden" name="MaxPrice" value="@Model.MaxPrice" />
+        }
+    </form>
+
+    <!-- ═══ Error Message ═══ -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="error-alert">
+            <strong>⚠️ Error:</strong> @Model.ErrorMessage
+        </div>
+    }
+
+    <div class="row">
+        <!-- ═══ Sidebar Filters ═══ -->
+        <div class="col-lg-3">
+            <!-- Category Filter -->
+            <div class="filter-card">
+                <h5><span class="filter-icon">📂</span> Categories</h5>
+                <ul class="category-list">
+                    <li>
+                        <a asp-page="/Products"
+                           asp-route-Search="@Model.Search"
+                           asp-route-MinPrice="@Model.MinPrice"
+                           asp-route-MaxPrice="@Model.MaxPrice"
+                           asp-route-SortBy="@Model.SortBy"
+                           class="@(Model.CategoryId == null ? "active" : "")">
+                            <span>All Categories</span>
+                            <span class="category-count">@Model.Categories.Sum(c => c.ProductCount)</span>
+                        </a>
+                    </li>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <li>
+                            <a asp-page="/Products"
+                               asp-route-CategoryId="@cat.Id"
+                               asp-route-Search="@Model.Search"
+                               asp-route-MinPrice="@Model.MinPrice"
+                               asp-route-MaxPrice="@Model.MaxPrice"
+                               asp-route-SortBy="@Model.SortBy"
+                               class="@(Model.CategoryId == cat.Id ? "active" : "")">
+                                <span>@cat.Name</span>
+                                <span class="category-count">@cat.ProductCount</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <!-- Price Filter -->
+            <div class="filter-card">
+                <h5><span class="filter-icon">💰</span> Price Range</h5>
+                <form method="get">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Min Price ($)</label>
+                        <input type="number" name="MinPrice" value="@Model.MinPrice"
+                               class="price-input" placeholder="0" min="0" step="0.01" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Max Price ($)</label>
+                        <input type="number" name="MaxPrice" value="@Model.MaxPrice"
+                               class="price-input" placeholder="Any" min="0" step="0.01" />
+                    </div>
+
+                    <!-- Preserve other filters -->
+                    @if (Model.CategoryId.HasValue)
+                    {
+                        <input type="hidden" name="CategoryId" value="@Model.CategoryId" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
+                    {
+                        <input type="hidden" name="Search" value="@Model.Search" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.SortBy))
+                    {
+                        <input type="hidden" name="SortBy" value="@Model.SortBy" />
+                    }
+
+                    <button type="submit" class="btn btn-filter">Apply Filter</button>
+                </form>
+            </div>
+
+            <!-- Clear All Filters -->
+            @if (Model.CategoryId.HasValue || !string.IsNullOrWhiteSpace(Model.Search) ||
+                 Model.MinPrice.HasValue || Model.MaxPrice.HasValue || !string.IsNullOrWhiteSpace(Model.SortBy))
+            {
+                <a asp-page="/Products" class="btn btn-reset w-100">
+                    ✕ Clear All Filters
+                </a>
+            }
+        </div>
+
+        <!-- ═══ Product Grid ═══ -->
+        <div class="col-lg-9">
+            <!-- Sort Bar -->
+            <div class="sort-bar">
+                <span class="result-count">
+                    Found <strong>@Model.TotalItems</strong> product(s)
+                    @if (Model.CategoryId.HasValue && Model.Categories.Any(c => c.Id == Model.CategoryId))
+                    {
+                        <span> in <strong>@Model.Categories.First(c => c.Id == Model.CategoryId).Name</strong></span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
+                    {
+                        <span> for "<strong>@Model.Search</strong>"</span>
+                    }
+                </span>
+                <span class="text-muted small">
+                    Page @Model.CurrentPage of @Math.Max(1, Model.TotalPages)
+                </span>
+            </div>
+
+            @if (Model.Products.Any())
+            {
+                <div class="row g-4">
+                    @foreach (var product in Model.Products)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <a asp-page="/ProductDetail" asp-route-id="@product.Id"
+                               style="text-decoration: none; color: inherit; display: block; height: 100%;">
+                            <div class="product-card">
+                                <!-- Image -->
+                                <div class="product-image-wrapper">
+                                    @if (product.IsAuction == true)
+                                    {
+                                        <span class="badge-auction">🔥 AUCTION</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(product.Images))
+                                    {
+                                        var firstImage = product.Images.Split(',')[0].Trim();
+                                        <img src="@firstImage" alt="@product.Title"
+                                             onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                                        <div class="product-image-placeholder" style="display:none;">📦</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="product-image-placeholder">📦</div>
+                                    }
+                                </div>
+
+                                <!-- Body -->
+                                <div class="product-body">
+                                    @if (!string.IsNullOrEmpty(product.CategoryName))
+                                    {
+                                        <div class="product-category">@product.CategoryName</div>
+                                    }
+                                    <div class="product-title" title="@product.Title">
+                                        @(product.Title ?? "Untitled Product")
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(product.Description))
+                                    {
+                                        <div class="product-description">@product.Description</div>
+                                    }
+                                    <div class="product-footer">
+                                        <span class="product-price">
+                                            $@(product.Price?.ToString("N2") ?? "0.00")
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(product.SellerName))
+                                        {
+                                            <span class="product-seller">
+                                                by <strong>@product.SellerName</strong>
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                <!-- ═══ Pagination ═══ -->
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="pagination-wrapper" aria-label="Product pagination">
+                        <ul class="pagination">
+                            <!-- Previous -->
+                            <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                <a class="page-link" asp-page="/Products"
+                                   asp-route-CurrentPage="@(Model.CurrentPage - 1)"
+                                   asp-route-PageSize="@Model.PageSize"
+                                   asp-route-CategoryId="@Model.CategoryId"
+                                   asp-route-Search="@Model.Search"
+                                   asp-route-MinPrice="@Model.MinPrice"
+                                   asp-route-MaxPrice="@Model.MaxPrice"
+                                   asp-route-SortBy="@Model.SortBy">
+                                    ‹ Prev
+                                </a>
+                            </li>
+
+                            @{
+                                int startPage = Math.Max(1, Model.CurrentPage - 2);
+                                int endPage = Math.Min(Model.TotalPages, startPage + 4);
+                                startPage = Math.Max(1, endPage - 4);
+                            }
+
+                            @if (startPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="/Products"
+                                       asp-route-CurrentPage="1"
+                                       asp-route-PageSize="@Model.PageSize"
+                                       asp-route-CategoryId="@Model.CategoryId"
+                                       asp-route-Search="@Model.Search"
+                                       asp-route-MinPrice="@Model.MinPrice"
+                                       asp-route-MaxPrice="@Model.MaxPrice"
+                                       asp-route-SortBy="@Model.SortBy">1</a>
+                                </li>
+                                @if (startPage > 2)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                }
+                            }
+
+                            @for (int i = startPage; i <= endPage; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link" asp-page="/Products"
+                                       asp-route-CurrentPage="@i"
+                                       asp-route-PageSize="@Model.PageSize"
+                                       asp-route-CategoryId="@Model.CategoryId"
+                                       asp-route-Search="@Model.Search"
+                                       asp-route-MinPrice="@Model.MinPrice"
+                                       asp-route-MaxPrice="@Model.MaxPrice"
+                                       asp-route-SortBy="@Model.SortBy">@i</a>
+                                </li>
+                            }
+
+                            @if (endPage < Model.TotalPages)
+                            {
+                                @if (endPage < Model.TotalPages - 1)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                }
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="/Products"
+                                       asp-route-CurrentPage="@Model.TotalPages"
+                                       asp-route-PageSize="@Model.PageSize"
+                                       asp-route-CategoryId="@Model.CategoryId"
+                                       asp-route-Search="@Model.Search"
+                                       asp-route-MinPrice="@Model.MinPrice"
+                                       asp-route-MaxPrice="@Model.MaxPrice"
+                                       asp-route-SortBy="@Model.SortBy">@Model.TotalPages</a>
+                                </li>
+                            }
+
+                            <!-- Next -->
+                            <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                                <a class="page-link" asp-page="/Products"
+                                   asp-route-CurrentPage="@(Model.CurrentPage + 1)"
+                                   asp-route-PageSize="@Model.PageSize"
+                                   asp-route-CategoryId="@Model.CategoryId"
+                                   asp-route-Search="@Model.Search"
+                                   asp-route-MinPrice="@Model.MinPrice"
+                                   asp-route-MaxPrice="@Model.MaxPrice"
+                                   asp-route-SortBy="@Model.SortBy">
+                                    Next ›
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+            else if (string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h4>No products found</h4>
+                    <p>Try adjusting your filters or search terms</p>
+                    <a asp-page="/Products" class="btn btn-search mt-3">View All Products</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
