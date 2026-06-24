@@ -8,263 +8,154 @@ using System.Security.Claims;
 namespace PRN232_Ebay_Buyer.API.Controllers;
 
 [ApiController]
-[Route("api/orders")]
+[Route("api/[controller]")]
 [Authorize]
 public class OrderController : ControllerBase
 {
-    private readonly CloneEbayDbContext _db;
-    private readonly ILogger<OrderController> _logger;
+    private readonly CloneEbayDbContext _context;
 
-    // Các trạng thái hợp lệ cho từng loại yêu cầu hoàn trả
-    private static readonly string[] CancelableStatuses = ["Pending", "Processing", "Shipped"];
-    private static readonly string[] ReturnableStatuses  = ["Delivered"];
-
-    public OrderController(CloneEbayDbContext db, ILogger<OrderController> logger)
+    public OrderController(CloneEbayDbContext context)
     {
-        _db = db;
-        _logger = logger;
+        _context = context;
     }
 
-    // ─── GET /api/orders ────────────────────────────────────────────────────────
-    /// <summary>
-    /// Lấy danh sách lịch sử đơn hàng của buyer (có phân trang và lọc theo status).
-    /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<ApiResponse<PagedResponse<OrderSummaryResponse>>>> GetOrders(
-        [FromQuery] string? status,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize   = 5)
+    private int GetUserId()
+    {
+        var idStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(idStr, out int id) ? id : 0;
+    }
+
+    [HttpGet("addresses")]
+    public async Task<IActionResult> GetAddresses()
     {
         var userId = GetUserId();
-        if (userId is null)
-            return Unauthorized(Fail<PagedResponse<OrderSummaryResponse>>("Token không hợp lệ."));
-
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize   < 1) pageSize   = 5;
-
-        var query = _db.OrderTables
-            .Include(o => o.OrderItems)
-            .Where(o => o.BuyerId == userId);
-
-        // Lọc theo status nếu có
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(o => o.Status == status.Trim());
-
-        var totalCount = await query.CountAsync();
-
-        var orders = await query
-            .OrderByDescending(o => o.OrderDate)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+        var addresses = await _context.Addresses
+            .Where(a => a.UserId == userId)
+            .Select(a => new AddressDto
+            {
+                Id = a.Id,
+                FullName = a.FullName ?? "",
+                Phone = a.Phone ?? "",
+                Street = a.Street ?? "",
+                City = a.City ?? "",
+                State = a.State ?? "",
+                Country = a.Country ?? "",
+                IsDefault = a.IsDefault ?? false
+            })
             .ToListAsync();
 
-        var items = orders.Select(o => new OrderSummaryResponse(
-            o.Id,
-            o.OrderDate,
-            o.Status,
-            o.TotalPrice,
-            o.OrderItems.Count
-        )).ToList();
-
-        var paged = new PagedResponse<OrderSummaryResponse>(items, totalCount, pageNumber, pageSize);
-
-        return Ok(new ApiResponse<PagedResponse<OrderSummaryResponse>>(
-            true, "Lấy danh sách đơn hàng thành công.", paged));
+        return Ok(new ApiResponse<List<AddressDto>>(true, "Success", addresses));
     }
 
-    // ─── GET /api/orders/{id} ───────────────────────────────────────────────────
-    /// <summary>
-    /// Lấy chi tiết một đơn hàng: sản phẩm, địa chỉ, thanh toán, vận chuyển, hoàn trả.
-    /// </summary>
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<ApiResponse<OrderDetailResponse>>> GetOrderById(int id)
+    [HttpPost("address")]
+    public async Task<IActionResult> CreateAddress([FromBody] CreateAddressRequest req)
     {
         var userId = GetUserId();
-        if (userId is null)
-            return Unauthorized(Fail<OrderDetailResponse>("Token không hợp lệ."));
 
-        var order = await _db.OrderTables
-            .Include(o => o.Address)
-            .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Product)
-            .Include(o => o.Payments)
-            .Include(o => o.ShippingInfos)
-            .Include(o => o.ReturnRequests)
-            .FirstOrDefaultAsync(o => o.Id == id);
-
-        if (order is null)
-            return NotFound(Fail<OrderDetailResponse>("Không tìm thấy đơn hàng."));
-
-        // Kiểm tra đơn hàng có thuộc về buyer hiện tại không
-        if (order.BuyerId != userId)
-            return StatusCode(403, Fail<OrderDetailResponse>("Bạn không có quyền xem đơn hàng này."));
-
-        var detail = MapToDetail(order);
-
-        return Ok(new ApiResponse<OrderDetailResponse>(
-            true, "Lấy chi tiết đơn hàng thành công.", detail));
-    }
-
-    // ─── POST /api/orders/{id}/return ───────────────────────────────────────────
-    /// <summary>
-    /// Gửi yêu cầu hoàn trả hoặc huỷ đơn hàng.
-    /// Type = "Cancel" → huỷ trước giao (Pending/Processing/Shipped).
-    /// Type = "Return" → hoàn trả sau khi nhận (Delivered).
-    /// </summary>
-    [HttpPost("{id:int}/return")]
-    public async Task<ActionResult<ApiResponse<ReturnRequestResponse>>> CreateReturnRequest(
-        int id,
-        [FromBody] CreateReturnRequestDto dto)
-    {
-        var userId = GetUserId();
-        if (userId is null)
-            return Unauthorized(Fail<ReturnRequestResponse>("Token không hợp lệ."));
-
-        // Validate type
-        if (string.IsNullOrWhiteSpace(dto.Type) ||
-            (dto.Type != "Cancel" && dto.Type != "Return"))
+        if (req.IsDefault)
         {
-            return BadRequest(Fail<ReturnRequestResponse>(
-                "Type phải là 'Cancel' (huỷ trước giao) hoặc 'Return' (hoàn trả sau nhận)."));
+            var existingDefault = await _context.Addresses
+                .Where(a => a.UserId == userId && a.IsDefault == true)
+                .ToListAsync();
+            foreach (var addr in existingDefault)
+            {
+                addr.IsDefault = false;
+            }
         }
 
-        if (string.IsNullOrWhiteSpace(dto.Reason))
-            return BadRequest(Fail<ReturnRequestResponse>("Lý do không được để trống."));
-
-        var order = await _db.OrderTables
-            .Include(o => o.ReturnRequests)
-            .FirstOrDefaultAsync(o => o.Id == id);
-
-        if (order is null)
-            return NotFound(Fail<ReturnRequestResponse>("Không tìm thấy đơn hàng."));
-
-        if (order.BuyerId != userId)
-            return StatusCode(403, Fail<ReturnRequestResponse>("Bạn không có quyền thao tác đơn hàng này."));
-
-        // Kiểm tra trạng thái phù hợp với type
-        if (dto.Type == "Cancel" && !CancelableStatuses.Contains(order.Status))
+        var address = new Address
         {
-            return BadRequest(Fail<ReturnRequestResponse>(
-                $"Đơn hàng ở trạng thái '{order.Status}' không thể huỷ. " +
-                $"Chỉ huỷ được khi đơn đang ở: {string.Join(", ", CancelableStatuses)}."));
-        }
-
-        if (dto.Type == "Return" && !ReturnableStatuses.Contains(order.Status))
-        {
-            return BadRequest(Fail<ReturnRequestResponse>(
-                $"Chỉ có thể hoàn trả đơn hàng đã giao (Delivered). " +
-                $"Đơn hàng hiện tại đang ở trạng thái '{order.Status}'."));
-        }
-
-        // Kiểm tra chưa có yêu cầu hoàn trả
-        if (order.ReturnRequests.Any())
-        {
-            return Conflict(Fail<ReturnRequestResponse>(
-                "Đơn hàng này đã có yêu cầu hoàn trả/huỷ đang được xử lý."));
-        }
-
-        // Lưu type vào prefix của reason để không cần thêm cột DB
-        var returnRequest = new ReturnRequest
-        {
-            OrderId   = order.Id,
-            UserId    = userId,
-            Reason    = $"[{dto.Type}] {dto.Reason.Trim()}",
-            Status    = "Pending",
-            CreatedAt = DateTime.UtcNow
+            UserId = userId,
+            FullName = req.FullName,
+            Phone = req.Phone,
+            Street = req.Street,
+            City = req.City,
+            State = req.State,
+            Country = req.Country,
+            IsDefault = req.IsDefault
         };
 
-        _db.ReturnRequests.Add(returnRequest);
-        await _db.SaveChangesAsync();
+        _context.Addresses.Add(address);
+        await _context.SaveChangesAsync();
 
-        _logger.LogInformation(
-            "ReturnRequest #{RrId} tạo bởi user {UserId} cho đơn #{OrderId} (Type={Type}).",
-            returnRequest.Id, userId, order.Id, dto.Type);
-
-        var response = new ReturnRequestResponse(
-            returnRequest.Id,
-            returnRequest.OrderId,
-            dto.Type,
-            dto.Reason.Trim(),
-            returnRequest.Status,
-            returnRequest.CreatedAt);
-
-        return CreatedAtAction(
-            nameof(GetOrderById),
-            new { id = order.Id },
-            new ApiResponse<ReturnRequestResponse>(
-                true, "Yêu cầu hoàn trả/huỷ đã được gửi thành công.", response));
+        return Ok(new ApiResponse<int>(true, "Address created", address.Id));
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────────────────
-
-    private int? GetUserId()
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout([FromBody] CheckoutRequest req)
     {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(claim, out var id) ? id : null;
-    }
+        var userId = GetUserId();
 
-    private static ApiResponse<T> Fail<T>(string message)
-        => new(false, message, default);
+        if (req.Items == null || !req.Items.Any())
+            return BadRequest(new ApiResponse<string>(false, "Cart is empty", null));
 
-    private static OrderDetailResponse MapToDetail(OrderTable order)
-    {
-        // Address
-        AddressInfo? addressInfo = order.Address is null ? null : new AddressInfo(
-            order.Address.FullName,
-            order.Address.Phone,
-            order.Address.Street,
-            order.Address.City,
-            order.Address.State,
-            order.Address.Country);
+        if (req.AddressId <= 0)
+            return BadRequest(new ApiResponse<string>(false, "Invalid address", null));
 
-        // Items
-        var items = order.OrderItems.Select(oi =>
+        decimal total = req.Items.Sum(i => i.Price * i.Quantity);
+
+        // Process cart (either new order or update the existing "Cart" status order to "Pending")
+        var cartOrder = await _context.OrderTables
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.BuyerId == userId && o.Status == "Cart");
+
+        OrderTable order;
+        if (cartOrder != null)
         {
-            // Lấy ảnh đầu tiên từ chuỗi images (phân cách bởi dấu phẩy)
-            var firstImage = oi.Product?.Images?.Split(',').FirstOrDefault()?.Trim();
-            return new OrderItemInfo(
-                oi.ProductId ?? 0,
-                oi.Product?.Title,
-                firstImage,
-                oi.Quantity ?? 0,
-                oi.UnitPrice ?? 0,
-                (oi.Quantity ?? 0) * (oi.UnitPrice ?? 0));
-        }).ToList();
-
-        // Payment (lấy bản ghi đầu tiên)
-        var pay = order.Payments.FirstOrDefault();
-        PaymentInfo? paymentInfo = pay is null ? null : new PaymentInfo(
-            pay.Method, pay.Amount, pay.Status, pay.PaidAt);
-
-        // Shipping (lấy bản ghi đầu tiên)
-        var ship = order.ShippingInfos.FirstOrDefault();
-        ShippingStatusInfo? shippingInfo = ship is null ? null : new ShippingStatusInfo(
-            ship.Carrier, ship.TrackingNumber, ship.Status, ship.EstimatedArrival);
-
-        // Return Request (lấy bản ghi đầu tiên)
-        var rr = order.ReturnRequests.FirstOrDefault();
-        ReturnRequestInfo? returnInfo = null;
-        if (rr is not null)
+            order = cartOrder;
+            order.Status = "Pending";
+            order.AddressId = req.AddressId;
+            order.OrderDate = DateTime.Now;
+            order.TotalPrice = total;
+            
+            // clear old items and re-add from request to be safe
+            _context.OrderItems.RemoveRange(order.OrderItems);
+        }
+        else
         {
-            // Tách type ra khỏi prefix [Cancel] / [Return]
-            var type   = "Unknown";
-            var reason = rr.Reason ?? string.Empty;
-            if (reason.StartsWith("[Cancel]"))
+            order = new OrderTable
             {
-                type   = "Cancel";
-                reason = reason[8..].Trim();
-            }
-            else if (reason.StartsWith("[Return]"))
-            {
-                type   = "Return";
-                reason = reason[8..].Trim();
-            }
-
-            returnInfo = new ReturnRequestInfo(rr.Id, type, reason, rr.Status, rr.CreatedAt);
+                BuyerId = userId,
+                AddressId = req.AddressId,
+                OrderDate = DateTime.Now,
+                TotalPrice = total,
+                Status = "Pending"
+            };
+            _context.OrderTables.Add(order);
         }
 
-        return new OrderDetailResponse(
-            order.Id, order.OrderDate, order.Status, order.TotalPrice,
-            addressInfo, items, paymentInfo, shippingInfo, returnInfo);
+        await _context.SaveChangesAsync(); // save to get order.Id
+
+        foreach (var item in req.Items)
+        {
+            _context.OrderItems.Add(new OrderItem
+            {
+                OrderId = order.Id,
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                UnitPrice = item.Price
+            });
+            // Update stock quantity
+            var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductId == item.ProductId);
+            if(inventory != null && inventory.Quantity >= item.Quantity)
+            {
+                inventory.Quantity -= item.Quantity;
+            }
+        }
+
+        var payment = new Payment
+        {
+            OrderId = order.Id,
+            UserId = userId,
+            Amount = total,
+            Method = "COD", // Hardcoded COD
+            Status = "Pending",
+            PaidAt = null
+        };
+        _context.Payments.Add(payment);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new ApiResponse<int>(true, "Order placed successfully", order.Id));
     }
 }

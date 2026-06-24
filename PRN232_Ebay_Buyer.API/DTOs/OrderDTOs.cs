@@ -1,98 +1,45 @@
 namespace PRN232_Ebay_Buyer.API.DTOs;
 
-// ─── Pagination ────────────────────────────────────────────────────────────────
-
-public record PagedResponse<T>(
-    List<T> Items,
-    int TotalCount,
-    int PageNumber,
-    int PageSize
-)
+public class CartItemDto
 {
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    public bool HasPreviousPage => PageNumber > 1;
-    public bool HasNextPage => PageNumber < TotalPages;
+    public int ProductId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string ImageUrl { get; set; } = string.Empty;
+    public int Quantity { get; set; }
 }
 
-// ─── Sub-records ───────────────────────────────────────────────────────────────
+public class SyncCartRequest
+{
+    public List<CartItemDto> Items { get; set; } = new();
+}
 
-public record AddressInfo(
-    string? FullName,
-    string? Phone,
-    string? Street,
-    string? City,
-    string? State,
-    string? Country
-);
+public class AddressDto
+{
+    public int Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Street { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
+    public bool IsDefault { get; set; }
+}
 
-public record OrderItemInfo(
-    int ProductId,
-    string? ProductTitle,
-    string? ProductImage,
-    int Quantity,
-    decimal UnitPrice,
-    decimal SubTotal
-);
+public class CreateAddressRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Street { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
+    public bool IsDefault { get; set; }
+}
 
-public record PaymentInfo(
-    string? Method,
-    decimal? Amount,
-    string? Status,
-    DateTime? PaidAt
-);
-
-public record ShippingStatusInfo(
-    string? Carrier,
-    string? TrackingNumber,
-    string? Status,
-    DateTime? EstimatedArrival
-);
-
-public record ReturnRequestInfo(
-    int Id,
-    string? Type,
-    string? Reason,
-    string? Status,
-    DateTime? CreatedAt
-);
-
-// ─── Order Responses ───────────────────────────────────────────────────────────
-
-public record OrderSummaryResponse(
-    int Id,
-    DateTime? OrderDate,
-    string? Status,
-    decimal? TotalPrice,
-    int ItemCount
-);
-
-public record OrderDetailResponse(
-    int Id,
-    DateTime? OrderDate,
-    string? Status,
-    decimal? TotalPrice,
-    AddressInfo? Address,
-    List<OrderItemInfo> Items,
-    PaymentInfo? Payment,
-    ShippingStatusInfo? Shipping,
-    ReturnRequestInfo? ReturnRequest
-);
-
-// ─── Return Request ────────────────────────────────────────────────────────────
-
-/// <summary>
-/// Type: "Cancel" (trước giao hàng) hoặc "Return" (sau khi nhận hàng)
-/// </summary>
-public record CreateReturnRequestDto(
-    string Type,
-    string Reason
-);
-
-public record ReturnRequestResponse(
-    int Id,
-    int? OrderId,
-    string? Type,
-    string? Reason,
-    string? Status,
-    DateTime? CreatedAt
-);
+public class CheckoutRequest
+{
+    public int AddressId { get; set; }
+    public string PaymentMethod { get; set; } = "COD";
+    public List<CartItemDto> Items { get; set; } = new();
+}
