@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebay-buyer-api-deployment
+  labels:
+    app: ebay-buyer-api
+spec:
+  replicas: 3 # BẮT BUỘC: Duy trì ít nhất 3 Pods để phân tải và backup
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1       # Tạo thêm tối đa 1 Pod mới trong lúc update (3 -> 4)
+      maxUnavailable: 0 # BẮT BUỘC: Luôn đảm bảo không Pod nào bị ngắt khi chưa có Pod mới thế chỗ
+
+  selector:
+    matchLabels:
+      app: ebay-buyer-api
+  template:
+    metadata:
+      labels:
+        app: ebay-buyer-api
+    spec:
+      terminationGracePeriodSeconds: 30 # Cho phép 30s để xử lý nốt các request dở dang trước khi tắt Pod cũ
+      containers:
+      - name: buyer-api
+        image: ebay-buyer-api:latest # Tên image local của bạn
+        imagePullPolicy: Never        # Dùng image local, không kéo từ Docker Hub về nữa
+        ports:
+        - containerPort: 5000
+
+        # Readiness Probe: Chỉ khi Pod trả về 200 OK thì K8s mới chuyển traffic sang
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          timeoutSeconds: 2
+          failureThreshold: 3
+
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ebay-buyer-api-service
+spec:
+  type: NodePort
+  selector:
+    app: ebay-buyer-api
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30005

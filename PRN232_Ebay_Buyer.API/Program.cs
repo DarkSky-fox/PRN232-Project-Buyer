@@ -105,6 +105,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 6. Đăng ký dịch vụ Health Check
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // ── 6. HTTP pipeline ─────────────────────────────────────────────────────────
@@ -124,6 +127,9 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
+
+// Map endpoint health check
+app.MapHealthChecks("/healthz");
 
 app.UseAuthentication();
 app.UseAuthorization();
