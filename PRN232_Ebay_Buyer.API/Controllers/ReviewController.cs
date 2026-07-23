@@ -189,4 +189,64 @@ public class ReviewController : ControllerBase
 
         return Ok(new ApiResponse<List<ReviewResponse>>(true, "Success", reviews));
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // GET /api/reviews/my?productId={id}                         [Authorize]
+    // Lấy review của user hiện tại cho 1 sản phẩm cụ thể.
+    // Trả về null nếu chưa review.
+    // ────────────────────────────────────────────────────────────────────────
+    [HttpGet("my")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<ReviewResponse?>>> GetMyReview([FromQuery] int productId)
+    {
+        var userId = GetUserId();
+        if (userId == 0)
+            return Unauthorized(new ApiResponse<ReviewResponse?>(false, "Unauthorized.", null));
+
+        var review = await _db.Reviews
+            .Include(r => r.Reviewer)
+            .FirstOrDefaultAsync(r => r.ProductId == productId && r.ReviewerId == userId);
+
+        if (review is null)
+            return Ok(new ApiResponse<ReviewResponse?>(true, "No review found.", null));
+
+        return Ok(new ApiResponse<ReviewResponse?>(true, "Success", MapToResponse(review)));
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // GET /api/reviews/can-review?productId={id}                 [Authorize]
+    // Kiểm tra user có quyền review sản phẩm này không:
+    //   - Đã mua & đã nhận (Delivered)  → canReview = true
+    //   - Đã review rồi                → hasReviewed = true, reviewId = <id>
+    // ────────────────────────────────────────────────────────────────────────
+    [HttpGet("can-review")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<CanReviewResponse>>> CanReview([FromQuery] int productId)
+    {
+        var userId = GetUserId();
+        if (userId == 0)
+            return Unauthorized(new ApiResponse<CanReviewResponse>(false, "Unauthorized.", null));
+
+        bool hasPurchased = await _db.OrderItems
+            .AnyAsync(oi =>
+                oi.ProductId == productId &&
+                oi.Order != null &&
+                oi.Order.BuyerId == userId &&
+                oi.Order.Status == "Delivered");
+
+        if (!hasPurchased)
+            return Ok(new ApiResponse<CanReviewResponse>(
+                true, "Not eligible to review.",
+                new CanReviewResponse(false, false, null)));
+
+        var existingReview = await _db.Reviews
+            .FirstOrDefaultAsync(r => r.ProductId == productId && r.ReviewerId == userId);
+
+        var result = new CanReviewResponse(
+            CanReview: true,
+            HasReviewed: existingReview != null,
+            ReviewId: existingReview?.Id);
+
+        return Ok(new ApiResponse<CanReviewResponse>(true, "Success", result));
+    }
 }
