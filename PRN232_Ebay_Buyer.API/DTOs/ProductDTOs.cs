@@ -16,6 +16,18 @@ public record ProductDto(
     DateTime? AuctionEndTime
 );
 
+public record CreateProductRequest(
+    string Title,
+    string Description,
+    decimal Price,
+    string? Images,
+    int CategoryId,
+    int SellerId,
+    bool IsAuction,
+    DateTime? AuctionEndTime,
+    int StockQuantity
+);
+
 public record CategoryDto(
     int Id,
     string? Name,

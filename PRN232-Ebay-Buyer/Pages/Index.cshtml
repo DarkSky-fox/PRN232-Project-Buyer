@@ -1,10 +1,337 @@
-﻿@page
+@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Home";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<style>
+    /* Styling according to high-end-visual-design skill */
+    .home-container {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1d1d1f;
+    }
+
+    /* Hero Section with rich dynamic mesh gradient */
+    .hero-banner {
+        background: radial-gradient(circle at 10% 20%, rgba(253, 239, 132, 0.4) 0%, rgba(247, 198, 169, 0.3) 44.2%, rgba(209, 238, 243, 0.4) 90%);
+        border-radius: 28px;
+        padding: 4.5rem 3rem;
+        border: 1px solid rgba(0,0,0,0.04);
+        margin-bottom: 4rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        color: #1d1d1f;
+    }
+
+    .hero-subtitle {
+        font-size: 1.15rem;
+        color: #515154;
+        max-width: 500px;
+    }
+
+    .btn-premium-cta {
+        background: #0071e3;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 30px;
+        padding: 0.8rem 1.8rem;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
+    }
+    .btn-premium-cta:hover {
+        background: #0077ed;
+        transform: translateY(-2px);
+        color: #fff;
+        box-shadow: 0 8px 20px rgba(0, 113, 227, 0.4);
+    }
+    .btn-premium-cta:active {
+        transform: scale(0.98);
+    }
+
+    /* Round Category Bubble design */
+    .category-bubble-wrapper {
+        display: flex;
+        gap: 1.5rem;
+        overflow-x: auto;
+        padding: 1rem 0.5rem;
+        scrollbar-width: none; /* Firefox */
+    }
+    .category-bubble-wrapper::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
+    }
+
+    .category-bubble {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: #1d1d1f;
+        transition: transform 0.2s ease;
+    }
+    .category-bubble:hover {
+        transform: translateY(-4px);
+    }
+
+    .category-icon-circle {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background: #f5f5f7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(0,0,0,0.04);
+        font-size: 1.75rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    .category-bubble:hover .category-icon-circle {
+        background: #ffffff;
+        border-color: rgba(0, 113, 227, 0.3);
+        box-shadow: 0 6px 16px rgba(0, 113, 227, 0.12);
+    }
+
+    .category-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    /* Product Double-Bezel Card Technique */
+    .outer-shell-card {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 6px;
+        transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .inner-core-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.02);
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 2px 8px rgba(0,0,0,0.02);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+    }
+
+    .outer-shell-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+        background: rgba(0, 113, 227, 0.04);
+        border-color: rgba(0, 113, 227, 0.15);
+    }
+
+    .product-img-wrapper {
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: #f5f5f7;
+        position: relative;
+    }
+
+    .product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    
+    .outer-shell-card:hover .product-image {
+        transform: scale(1.04);
+    }
+
+    .product-content {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .product-category {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #86868b;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.4rem;
+    }
+
+    .product-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1d1d1f;
+        line-height: 1.3;
+        margin-bottom: 0.6rem;
+        height: 2.6rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .product-price {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #1d1d1f;
+    }
+
+    .format-tag {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        border-radius: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        z-index: 5;
+    }
+
+    .tag-auction {
+        background: #f56300;
+        color: white;
+    }
+
+    .tag-buy-now {
+        background: #0071e3;
+        color: white;
+    }
+</style>
+
+<div class="container py-5 home-container">
+    
+    <!-- Hero Banner Section -->
+    <div class="hero-banner d-flex align-items-center">
+        <div class="row w-100 g-4 align-items-center">
+            <div class="col-lg-7 ps-md-4">
+                <span class="badge bg-white text-dark rounded-pill px-3 py-2 text-uppercase font-weight-bold mb-3 shadow-sm" style="font-size: 0.75rem; letter-spacing: 0.05em;">Welcome to eBay Clone</span>
+                <h1 class="hero-title mb-3">Discover the Perfect Deal Today.</h1>
+                <p class="hero-subtitle mb-4">Shop verified products, bid on vintage treasures, and sell your own gear in minutes.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a asp-page="/Products" class="btn-premium-cta">Browse All Items</a>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a asp-page="/Seller/AddProduct" class="btn btn-outline-dark rounded-pill px-4 py-2 font-weight-semibold" style="border-width: 2px;">Start Selling</a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Auth/Register" class="btn btn-outline-dark rounded-pill px-4 py-2 font-weight-semibold" style="border-width: 2px;">Join Now</a>
+                    }
+                </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block text-center">
+                <span style="font-size: 10rem; display: inline-block; filter: drop-shadow(0 15px 30px rgba(0,0,0,0.08));" class="animate-bounce">🛒</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Bubbles Row -->
+    <div class="mb-5">
+        <h4 class="font-weight-bold mb-4">Popular Categories</h4>
+        <div class="category-bubble-wrapper">
+            @{
+                // Map category names to aesthetic icons/emojis
+                string GetCategoryEmoji(string? name)
+                {
+                    if (string.IsNullOrEmpty(name)) return "📦";
+                    name = name.ToLower();
+                    if (name.Contains("phone") || name.Contains("mobile")) return "📱";
+                    if (name.Contains("computer") || name.Contains("laptop") || name.Contains("tech")) return "💻";
+                    if (name.Contains("fashion") || name.Contains("cloth") || name.Contains("shoe")) return "👕";
+                    if (name.Contains("toy") || name.Contains("game")) return "🎮";
+                    if (name.Contains("book")) return "📚";
+                    if (name.Contains("home") || name.Contains("kitchen")) return "🏡";
+                    if (name.Contains("sport")) return "⚽";
+                    if (name.Contains("watch") || name.Contains("jewelry")) return "⌚";
+                    if (name.Contains("automotive") || name.Contains("car")) return "🚗";
+                    return "📦";
+                }
+            }
+            @foreach (var cat in Model.Categories)
+            {
+                <a href="/Products?categoryId=@cat.Id" class="category-bubble">
+                    <div class="category-icon-circle">
+                        @GetCategoryEmoji(cat.Name)
+                    </div>
+                    <span class="category-name">@cat.Name</span>
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- New Arrivals Section -->
+    <div class="mb-5 pt-3">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="font-weight-bold mb-0">New Arrivals</h4>
+            <a asp-page="/Products" class="text-decoration-none font-weight-bold" style="color: #0071e3;">View All Products &rarr;</a>
+        </div>
+
+        @if (Model.LatestProducts.Count == 0)
+        {
+            <div class="alert alert-light text-center py-5 rounded-4 shadow-sm">
+                <span class="d-block mb-2" style="font-size: 2rem;">📦</span>
+                <span class="text-muted">No products listed in the catalog yet.</span>
+            </div>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                @foreach (var product in Model.LatestProducts)
+                {
+                    <div class="col">
+                        <div class="outer-shell-card">
+                            <div class="inner-core-card">
+                                @if (product.IsAuction == true)
+                                {
+                                    <span class="format-tag tag-auction">Auction</span>
+                                }
+                                else
+                                {
+                                    <span class="format-tag tag-buy-now">Buy It Now</span>
+                                }
+                                
+                                <div class="product-img-wrapper">
+                                    <img src="@(string.IsNullOrEmpty(product.Images) ? "/images/default-product.png" : product.Images)" 
+                                         alt="@product.Title" class="product-image" />
+                                </div>
+                                <div class="product-content">
+                                    <span class="product-category">@product.CategoryName</span>
+                                    <h5 class="product-title">
+                                        <a asp-page="/ProductDetail" asp-route-id="@product.Id" class="text-decoration-none text-dark stretched-link">
+                                            @product.Title
+                                        </a>
+                                    </h5>
+                                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                                        <span class="product-price">$@product.Price?.ToString("F2")</span>
+                                        @if (product.IsAuction == true)
+                                        {
+                                            <span class="text-muted small">Ends soon</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>

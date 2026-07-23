@@ -1,0 +1,327 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Seller.AddProductModel
+@{
+    ViewData["Title"] = "List New Item";
+}
+
+<style>
+    .seller-container {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1d1d1f;
+    }
+    
+    .glass-shell {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 24px;
+        padding: 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    }
+    
+    .inner-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid rgba(0, 0, 0, 0.03);
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    }
+
+    .form-control-premium {
+        border-radius: 12px;
+        padding: 0.65rem 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        font-size: 0.95rem;
+        transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        background-color: #fcfcfd;
+    }
+    
+    .form-control-premium:focus {
+        border-color: #0071e3;
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.12);
+        outline: none;
+    }
+
+    .btn-premium {
+        background: #0071e3;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
+    }
+    
+    .btn-premium:hover {
+        background: #0077ed;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(0, 113, 227, 0.3);
+    }
+    
+    .btn-premium:active {
+        transform: scale(0.98);
+    }
+
+    .btn-premium-outline {
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        background: transparent;
+        color: #1d1d1f;
+        font-weight: 500;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+    .btn-premium-outline:hover {
+        background: rgba(0,0,0,0.03);
+        border-color: rgba(0,0,0,0.3);
+    }
+
+    .section-title {
+        font-weight: 700;
+        font-size: 1.15rem;
+        letter-spacing: -0.01em;
+        color: #1d1d1f;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .image-preview-container {
+        border: 2px dashed rgba(0,0,0,0.1);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        background: #fdfdfd;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+    .image-preview-container img {
+        max-height: 140px;
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        display: none;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #0071e3;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+</style>
+
+<div class="container py-5 seller-container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="glass-shell">
+                <div class="inner-card p-4 p-md-5">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="h3 mb-0 font-weight-bold">List an Item for Sale</h2>
+                        <a asp-page="/Seller/MyProducts" class="btn-premium-outline py-2 px-3 text-decoration-none">Back to Dashboard</a>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Message))
+                    {
+                        <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show rounded-4 border-0 mb-4" role="alert">
+                            @Model.Message
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form method="post" enctype="multipart/form-data">
+                        
+                        <!-- Section: Basic Information -->
+                        <div class="mb-5">
+                            <h5 class="section-title">Product Details</h5>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="title">Product Title</label>
+                                <input type="text" class="form-control form-control-premium" id="title"
+                                       asp-for="Title" placeholder="e.g. iPhone 15 Pro Max 256GB Titanium" />
+                                <span class="text-danger small" asp-validation-for="Title"></span>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="description">Detailed Description</label>
+                                <textarea class="form-control form-control-premium" id="description" rows="5"
+                                          asp-for="Description" placeholder="Write everything about your product (condition, features, specs, warranty)..."></textarea>
+                                <span class="text-danger small" asp-validation-for="Description"></span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="categoryId">Category</label>
+                                    <select class="form-select form-control-premium" id="categoryId" asp-for="CategoryId">
+                                        <option value="">-- Choose Category --</option>
+                                        @foreach (var cat in Model.Categories)
+                                        {
+                                            <option value="@cat.Id">@cat.Name</option>
+                                        }
+                                    </select>
+                                    <span class="text-danger small" asp-validation-for="CategoryId"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="stockQuantity">Stock Quantity</label>
+                                    <input type="number" class="form-control form-control-premium" id="stockQuantity"
+                                           asp-for="StockQuantity" min="1" step="1" />
+                                    <span class="text-danger small" asp-validation-for="StockQuantity"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Pricing & Listing Mode -->
+                        <div class="mb-5">
+                            <h5 class="section-title">Pricing & Format</h5>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="price">Price ($)</label>
+                                    <input type="number" class="form-control form-control-premium" id="price"
+                                           asp-for="Price" min="0.01" step="0.01" placeholder="0.00" />
+                                    <span class="text-danger small" asp-validation-for="Price"></span>
+                                </div>
+                                
+                                <div class="col-md-6 d-flex align-items-center mt-md-4 pt-md-2">
+                                    <div class="d-flex align-items-center">
+                                        <label class="toggle-switch me-3">
+                                            <input type="checkbox" id="isAuctionCheckbox" asp-for="IsAuction" onchange="toggleAuctionFields();" />
+                                            <span class="slider"></span>
+                                        </label>
+                                        <div>
+                                            <label class="form-label mb-0 font-weight-bold" for="isAuctionCheckbox">List as Auction</label>
+                                            <div class="text-muted" style="font-size: 0.78rem;">Allow buyers to bid instead of buying instantly.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4" id="auctionEndTimeContainer" style="display: none;">
+                                <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="auctionEndTime">Auction End Date & Time</label>
+                                <input type="datetime-local" class="form-control form-control-premium" id="auctionEndTime"
+                                       asp-for="AuctionEndTime" />
+                                <span class="text-danger small" asp-validation-for="AuctionEndTime"></span>
+                                <div class="form-text text-muted" style="font-size: 0.78rem;">Specify the end time for this bidding item.</div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Media Upload -->
+                        <div class="mb-5">
+                            <h5 class="section-title">Product Image</h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-7">
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary font-weight-semibold" style="font-size: 0.85rem;" for="productImageFile">Select Product Image</label>
+                                        <input type="file" class="form-control form-control-premium" id="productImageFile"
+                                               asp-for="ProductImageFile" accept="image/*" onchange="previewProductImage(this);" />
+                                        <span class="text-danger small" asp-validation-for="ProductImageFile"></span>
+                                        <div class="form-text text-muted" style="font-size: 0.78rem;">Upload a clean, bright photo of the product to attract customers.</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="image-preview-container" id="previewContainer">
+                                        <span class="text-muted small mb-2" id="previewPlaceholder">Image preview will appear here</span>
+                                        <img src="" alt="Product Preview" id="productPreview" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="pt-3">
+                            <button type="submit" class="btn btn-premium w-100">
+                                Publish Product Listing
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleAuctionFields() {
+            var checkbox = document.getElementById('isAuctionCheckbox');
+            var container = document.getElementById('auctionEndTimeContainer');
+            if (checkbox.checked) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function previewProductImage(input) {
+            var placeholder = document.getElementById('previewPlaceholder');
+            var preview = document.getElementById('productPreview');
+            
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.src = "";
+                preview.style.display = 'none';
+                placeholder.style.display = 'block';
+            }
+        }
+
+        // Initialize state on load
+        document.addEventListener("DOMContentLoaded", function() {
+            toggleAuctionFields();
+        });
+    </script>
+}

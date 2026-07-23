@@ -168,6 +168,41 @@ public class AuthController : ControllerBase
                 user.Email ?? string.Empty, user.Role ?? "User", expiresAt)));
     }
 
+    // ─── GET /api/auth/profile/{userId} ──────────────────────────────────────
+    [HttpGet("profile/{userId:int}")]
+    public async Task<ActionResult<ApiResponse<UserProfileResponse>>> GetProfile(int userId)
+    {
+        var user = await _db.Users
+            .Include(u => u.Addresses)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user is null)
+        {
+            return NotFound(new ApiResponse<UserProfileResponse>(
+                false, "User not found.", null));
+        }
+
+        var defaultAddress = user.Addresses.FirstOrDefault(a => a.IsDefault == true);
+
+        var response = new UserProfileResponse(
+            user.Id,
+            user.Username ?? string.Empty,
+            user.Email ?? string.Empty,
+            user.Role ?? "User",
+            user.AvatarUrl,
+            null,
+            defaultAddress?.FullName,
+            defaultAddress?.Phone,
+            defaultAddress?.Street,
+            defaultAddress?.City,
+            defaultAddress?.State,
+            defaultAddress?.Country
+        );
+
+        return Ok(new ApiResponse<UserProfileResponse>(
+            true, "Profile retrieved successfully.", response));
+    }
+
     // ─── PUT /api/auth/update-profile ──────────────────────────────────────
     [HttpPut("update-profile")]
     public async Task<ActionResult<ApiResponse<UserProfileResponse>>> UpdateProfile(
@@ -182,7 +217,9 @@ public class AuthController : ControllerBase
                 false, "Invalid user.", null));
         }
 
-        var user = await _db.Users.FindAsync(request.UserId);
+        var user = await _db.Users
+            .Include(u => u.Addresses)
+            .FirstOrDefaultAsync(u => u.Id == request.UserId);
 
         if (user is null)
         {
@@ -200,6 +237,25 @@ public class AuthController : ControllerBase
             user.AvatarUrl = request.AvatarUrl.Trim();
         }
 
+        // Cập nhật hoặc thêm mới địa chỉ mặc định
+        var defaultAddress = user.Addresses.FirstOrDefault(a => a.IsDefault == true);
+        if (defaultAddress is null)
+        {
+            defaultAddress = new Address
+            {
+                UserId = user.Id,
+                IsDefault = true
+            };
+            _db.Addresses.Add(defaultAddress);
+        }
+
+        defaultAddress.FullName = request.FullName?.Trim();
+        defaultAddress.Phone = request.Phone?.Trim();
+        defaultAddress.Street = request.Street?.Trim();
+        defaultAddress.City = request.City?.Trim();
+        defaultAddress.State = request.State?.Trim();
+        defaultAddress.Country = request.Country?.Trim();
+
         _logger.LogWarning("Before SaveChanges - Username={U}, AvatarUrl={A}, EntryState={S}",
             user.Username, user.AvatarUrl, _db.Entry(user).State);
         await _db.SaveChangesAsync();
@@ -214,16 +270,25 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("Profile updated for user {UserId}. New token generated.", request.UserId);
 
+        var response = new UserProfileResponse(
+            user.Id,
+            user.Username ?? string.Empty,
+            user.Email ?? string.Empty,
+            user.Role ?? "User",
+            user.AvatarUrl,
+            newToken,
+            defaultAddress.FullName,
+            defaultAddress.Phone,
+            defaultAddress.Street,
+            defaultAddress.City,
+            defaultAddress.State,
+            defaultAddress.Country
+        );
+
         return Ok(new ApiResponse<UserProfileResponse>(
             true,
             "Profile updated successfully.",
-            new UserProfileResponse(
-                user.Id,
-                user.Username ?? string.Empty,
-                user.Email ?? string.Empty,
-                user.Role ?? "User",
-                user.AvatarUrl,
-                newToken)));
+            response));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────

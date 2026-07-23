@@ -12,11 +12,16 @@ public class ProfileModel : PageModel
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ProfileModel> _logger;
+    private readonly IWebHostEnvironment _webHostEnvironment;
 
-    public ProfileModel(IHttpClientFactory httpClientFactory, ILogger<ProfileModel> logger)
+    public ProfileModel(
+        IHttpClientFactory httpClientFactory, 
+        ILogger<ProfileModel> logger,
+        IWebHostEnvironment webHostEnvironment)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _webHostEnvironment = webHostEnvironment;
     }
 
     [BindProperty]
@@ -24,16 +29,39 @@ public class ProfileModel : PageModel
 
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    
+    [BindProperty]
     public string AvatarUrl { get; set; } = string.Empty;
+
+    [BindProperty]
+    public string? FullName { get; set; }
+
+    [BindProperty]
+    public string? Phone { get; set; }
+
+    [BindProperty]
+    public string? Street { get; set; }
+
+    [BindProperty]
+    public string? City { get; set; }
+
+    [BindProperty]
+    public string? State { get; set; }
+
+    [BindProperty]
+    public string? Country { get; set; }
+
+    [BindProperty]
+    public IFormFile? AvatarFile { get; set; }
 
     public bool IsAuthenticated { get; set; }
     public string Message { get; set; } = string.Empty;
     public bool IsSuccess { get; set; }
     public bool IsLoading { get; set; }
 
-    public IActionResult OnGet()
+    public async Task<IActionResult> OnGetAsync()
     {
-        LoadUserFromClaims();
+        await LoadUserProfileAsync();
         return Page();
     }
 
@@ -65,17 +93,41 @@ public class ProfileModel : PageModel
 
         try
         {
+            // ── Handle image upload from file explorer ──
+            if (AvatarFile != null)
+            {
+                var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(AvatarFile.FileName);
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await AvatarFile.CopyToAsync(fileStream);
+                }
+
+                AvatarUrl = "/uploads/" + uniqueFileName;
+            }
+
             var payload = new
             {
                 userId = int.Parse(userId),
                 username = Username.Trim(),
-                avatarUrl = AvatarUrl?.Trim()
+                avatarUrl = !string.IsNullOrEmpty(AvatarUrl) ? AvatarUrl.Trim() : null,
+                fullName = FullName?.Trim(),
+                phone = Phone?.Trim(),
+                street = Street?.Trim(),
+                city = City?.Trim(),
+                state = State?.Trim(),
+                country = Country?.Trim()
             };
 
             var client = _httpClientFactory.CreateClient("AuthApi");
             var response = await client.PutAsJsonAsync("/api/auth/update-profile", payload);
-
-            var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
@@ -85,8 +137,7 @@ public class ProfileModel : PageModel
                 if (result?.Success == true && result.Data is not null)
                 {
                     var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-
+                    
                     if (!string.IsNullOrEmpty(result.Data.NewToken) &&
                         !string.IsNullOrEmpty(userIdClaim))
                     {
@@ -125,14 +176,11 @@ public class ProfileModel : PageModel
                             });
                     }
 
-                    Email = result.Data.Email;
-                    Role = result.Data.Role;
-                    Username = result.Data.Username;
-                    AvatarUrl = result.Data.AvatarUrl ?? string.Empty;
-                    IsAuthenticated = true;
-
                     Message = "Profile updated successfully!";
                     IsSuccess = true;
+                    
+                    // Reload data from backend to ensure consistent state
+                    await LoadUserProfileAsync();
                 }
                 else
                 {
@@ -179,17 +227,53 @@ public class ProfileModel : PageModel
     public async Task<IActionResult> OnGetLogoutAsync()
     {
         Response.Cookies.Delete("EbayAuth");
+        Response.Cookies.Delete("BearerToken");
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToPage("/Auth/Login");
     }
 
-    private void LoadUserFromClaims()
+    private async Task LoadUserProfileAsync()
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            Email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? string.Empty;
-            Username = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? string.Empty;
-            Role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                try
+                {
+                    var client = _httpClientFactory.CreateClient("AuthApi");
+                    var response = await client.GetAsync($"/api/auth/profile/{userId}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = await response.Content
+                            .ReadFromJsonAsync<ApiResponse<UserProfileResponse>>();
+                        if (result?.Success == true && result.Data is not null)
+                        {
+                            Email = result.Data.Email;
+                            Username = result.Data.Username;
+                            Role = result.Data.Role;
+                            AvatarUrl = result.Data.AvatarUrl ?? string.Empty;
+                            FullName = result.Data.FullName;
+                            Phone = result.Data.Phone;
+                            Street = result.Data.Street;
+                            City = result.Data.City;
+                            State = result.Data.State;
+                            Country = result.Data.Country;
+                            IsAuthenticated = true;
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load user profile from API");
+                }
+            }
+
+            // Fallback to claims if API load fails
+            Email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+            Username = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+            Role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
             IsAuthenticated = !string.IsNullOrEmpty(Email);
         }
         else
@@ -205,6 +289,12 @@ public class ProfileModel : PageModel
         string Email,
         string Role,
         string? AvatarUrl,
-        string? NewToken
+        string? NewToken,
+        string? FullName,
+        string? Phone,
+        string? Street,
+        string? City,
+        string? State,
+        string? Country
     );
 }
