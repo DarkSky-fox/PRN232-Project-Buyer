@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.SqlClient;
 
 namespace PRN232_Ebay_Buyer.API.Controllers;
 
 /// <summary>
 /// Health check endpoint dùng cho Nginx passive health check và monitoring.
+/// Exempt from rate limiting — health probes must never be blocked.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[DisableRateLimiting]
 public class HealthController : ControllerBase
 {
     private readonly IConfiguration _config;

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PRN232_Ebay_Buyer.API.Extensions;
 using PRN232_Ebay_Buyer.API.Models;
 using PRN232_Ebay_Buyer.API.Services;
 
@@ -31,6 +32,9 @@ builder.Services.AddSingleton<IJwtService, JwtService>();
 
 // ── 3. Memory Cache (dùng cho verification token) ──────────────────────────
 builder.Services.AddMemoryCache();
+
+// ── 3b. Rate Limiting (100 req / 60 s per client IP, HTTP 429 on breach) ───
+builder.Services.AddApiRateLimiting(builder.Configuration);
 
 // ── 3. JWT Authentication / Authorization ───────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -112,9 +116,16 @@ var app = builder.Build();
 
 // ── 6. HTTP pipeline ─────────────────────────────────────────────────────────
 // QUAN TRỌNG: UseForwardedHeaders phải gọi trước các middleware khác
+// để X-Forwarded-For được phân giải thành RemoteIpAddress trước khi
+// rate limiter partition by IP.
 app.UseForwardedHeaders();
 
 app.UseCors("AllowFrontend");
+
+// ── Rate Limiter ─────────────────────────────────────────────────────────────
+// Đặt SAU ForwardedHeaders + CORS (IP đã được resolve)
+// và TRƯỚC Authentication (tránh chi phí xác thực JWT cho các request bị chặn).
+app.UseRateLimiter();
 
 // Thêm Instance ID vào mọi response (dùng để debug load balancing)
 app.Use(async (context, next) =>
