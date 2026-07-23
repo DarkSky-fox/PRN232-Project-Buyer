@@ -1,0 +1,439 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Order.DetailModel
+@{
+    ViewData["Title"] = "Order Details";
+    var order = Model.OrderDetail;
+}
+
+<div class="container py-5">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (order == null)
+    {
+        <div class="text-center py-5">
+            <h4 class="text-danger">Order not found</h4>
+            <a href="/Order/Index" class="btn btn-primary mt-3">Back to Orders</a>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <a href="/Order/Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Orders
+                </a>
+                <h2 class="fw-bold mb-0">Order #@order.Id</h2>
+                <p class="text-muted mb-0">Placed on @(order.OrderDate?.ToString("MMMM dd, yyyy") ?? "-")</p>
+            </div>
+            
+            @if (order.ReturnRequest == null)
+            {
+                if (order.Status == "Pending" || order.Status == "Processing" || order.Status == "Shipped")
+                {
+                    <button class="btn btn-outline-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                        Cancel Order
+                    </button>
+                }
+                else if (order.Status == "Delivered")
+                {
+                    <button class="btn btn-outline-warning rounded-pill px-4 text-dark" data-bs-toggle="modal" data-bs-target="#returnModal">
+                        Return Items
+                    </button>
+                }
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                    <i class="bi bi-info-circle me-1"></i> @order.ReturnRequest.Type Request: @order.ReturnRequest.Status
+                </span>
+            }
+        </div>
+
+        <!-- Progress Timeline -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4 p-md-5">
+                @{
+                    int progress = order.Status switch {
+                        "Pending" => 25,
+                        "Processing" => 50,
+                        "Shipped" => 75,
+                        "Delivered" => 100,
+                        _ => 0
+                    };
+                }
+                <div class="position-relative m-4">
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: @progress%;" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    
+                    <div class="position-absolute top-0 start-0 translate-middle text-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-sm @(progress >= 25 ? "bg-success text-white" : "bg-light text-muted")" style="width: 2rem; height: 2rem;">
+                            <i class="bi bi-cart-check"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-semibold @(progress >= 25 ? "text-success" : "text-muted")">Pending</small>
+                    </div>
+
+                    <div class="position-absolute top-0 start-50 translate-middle text-center" style="margin-left: -25%;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-sm @(progress >= 50 ? "bg-success text-white" : "bg-light text-muted")" style="width: 2rem; height: 2rem;">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-semibold @(progress >= 50 ? "text-success" : "text-muted")">Processing</small>
+                    </div>
+
+                    <div class="position-absolute top-0 start-50 translate-middle text-center" style="margin-left: 25%;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-sm @(progress >= 75 ? "bg-success text-white" : "bg-light text-muted")" style="width: 2rem; height: 2rem;">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-semibold @(progress >= 75 ? "text-success" : "text-muted")">Shipped</small>
+                    </div>
+
+                    <div class="position-absolute top-0 start-100 translate-middle text-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 border-white shadow-sm @(progress >= 100 ? "bg-success text-white" : "bg-light text-muted")" style="width: 2rem; height: 2rem;">
+                            <i class="bi bi-check2-circle"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-semibold @(progress >= 100 ? "text-success" : "text-muted")">Delivered</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Order Items -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h5 class="fw-bold mb-0">Items in this Order</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var item in order.Items)
+                            {
+                                <li class="list-group-item p-4">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-2 col-4 mb-3 mb-md-0">
+                                            @if (!string.IsNullOrEmpty(item.ProductImage))
+                                            {
+                                                <img src="@item.ProductImage" alt="@item.ProductTitle" class="img-fluid rounded-3" style="object-fit: cover; height: 80px; width: 100%;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center text-muted" style="height: 80px;">
+                                                    <i class="bi bi-image"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="col-md-6 col-8 mb-3 mb-md-0">
+                                            <h6 class="fw-semibold mb-1">
+                                            <a href="/ProductDetail/@item.ProductId" class="text-dark text-decoration-none hover-primary">@item.ProductTitle</a>
+                                            </h6>
+                                            <p class="text-muted small mb-0">Qty: @item.Quantity &times; $@item.UnitPrice.ToString("N2")</p>
+                                        </div>
+                                        <div class="col-md-4 text-md-end d-flex flex-column align-items-md-end">
+                                            <h6 class="fw-bold text-dark mb-2">$@(item.SubTotal.ToString("N2"))</h6>
+                                            
+                                            @if (order.Status == "Delivered")
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary rounded-pill mt-2" 
+                                                        onclick="openReviewModal(@item.ProductId, '@item.ProductTitle')">
+                                                    <i class="bi bi-star-fill text-warning me-1"></i> Write Review
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary & Info -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h5 class="fw-bold mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Subtotal</span>
+                            <span class="fw-semibold">$@(order.TotalPrice?.ToString("N2") ?? "0.00")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Shipping</span>
+                            <span class="fw-semibold text-success">Free</span>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold fs-5">Total</span>
+                            <span class="fw-bold fs-4 text-primary">$@(order.TotalPrice?.ToString("N2") ?? "0.00")</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (order.Address != null)
+                {
+                    <div class="card border-0 shadow-sm rounded-4 mb-4">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Shipping Address</h6>
+                            <p class="mb-1 fw-semibold">@order.Address.FullName</p>
+                            <p class="text-muted small mb-1">@order.Address.Street, @order.Address.City, @order.Address.State, @order.Address.Country</p>
+                            <p class="text-muted small mb-0"><i class="bi bi-telephone me-1"></i>@order.Address.Phone</p>
+                        </div>
+                    </div>
+                }
+
+                @if (order.Payment != null)
+                {
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-credit-card-fill text-success me-2"></i>Payment Information</h6>
+                            <p class="mb-1 text-muted small">Method: <strong class="text-dark">@order.Payment.Method</strong></p>
+                            <p class="mb-0 text-muted small">Status: 
+                                <span class="badge @(order.Payment.Status == "Paid" || order.Payment.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">@order.Payment.Status</span>
+                            </p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-x-circle me-2"></i>Cancel Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="Cancel">
+                <div class="modal-body py-0">
+                    <p class="text-muted">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                    <input type="hidden" asp-for="OrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason for Cancellation</label>
+                        <textarea asp-for="CancelReason" class="form-control rounded-3" rows="3" required placeholder="Tell us why you're cancelling..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Confirm Cancellation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Return Items Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-warning"><i class="bi bi-arrow-return-left me-2"></i>Return Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="Return" id="returnForm">
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Please describe the issue and attach photo evidence to support your return request.</p>
+                    <input type="hidden" asp-for="OrderId" />
+                    <input type="hidden" asp-for="ReturnImageData" id="returnImageData" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason for Return <span class="text-danger">*</span></label>
+                        <textarea asp-for="ReturnReason" class="form-control rounded-3" rows="3" required
+                                  placeholder="E.g., item damaged, wrong item received, does not match description..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-camera me-1 text-warning"></i>Evidence Photos
+                            <span class="text-muted small fw-normal ms-1">(optional, up to 3 images)</span>
+                        </label>
+                        <div class="border-2 border-dashed rounded-3 p-3 text-center bg-light" id="dropZone"
+                             style="border: 2px dashed #dee2e6; cursor: pointer;">
+                            <i class="bi bi-cloud-upload fs-2 text-muted d-block mb-1"></i>
+                            <p class="text-muted small mb-2">Drag & drop images here, or click to browse</p>
+                            <input type="file" id="returnImagesInput" accept="image/*" multiple class="d-none" />
+                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                                    onclick="document.getElementById('returnImagesInput').click()">
+                                <i class="bi bi-folder2-open me-1"></i>Browse Files
+                            </button>
+                            <p class="text-muted small mt-2 mb-0">Supported: JPG, PNG, WEBP (max 2MB each)</p>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div class="row g-2 mt-2" id="imagePreviewContainer" style="display:none!important;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark fw-semibold" id="returnSubmitBtn">
+                        <i class="bi bi-send me-1"></i>Submit Return Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Write Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-star-fill text-warning me-2"></i>Write a Review</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="Review">
+                <div class="modal-body py-0">
+                    <p class="text-muted mb-4" id="reviewProductTitle">Product Title</p>
+                    <input type="hidden" asp-for="OrderId" />
+                    <input type="hidden" asp-for="ReviewProductId" id="reviewProductId" />
+                    <input type="hidden" asp-for="ReviewRating" id="reviewRatingInput" value="5" />
+                    
+                    <div class="mb-4 text-center">
+                        <label class="form-label fw-semibold d-block">Overall Rating</label>
+                        <div class="rating-stars fs-2 text-warning cursor-pointer" id="ratingContainer">
+                            <i class="bi bi-star-fill" data-rating="1"></i>
+                            <i class="bi bi-star-fill" data-rating="2"></i>
+                            <i class="bi bi-star-fill" data-rating="3"></i>
+                            <i class="bi bi-star-fill" data-rating="4"></i>
+                            <i class="bi bi-star-fill" data-rating="5"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Your Comment</label>
+                        <textarea asp-for="ReviewComment" class="form-control rounded-3" rows="4" required placeholder="What did you like or dislike?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ── Review Modal ───────────────────────────────────────────────────────
+        function openReviewModal(productId, productTitle) {
+            document.getElementById('reviewProductId').value = productId;
+            document.getElementById('reviewProductTitle').innerText = 'Reviewing: ' + productTitle;
+            var modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Star Rating Logic
+            const stars = document.querySelectorAll('#ratingContainer i');
+            const ratingInput = document.getElementById('reviewRatingInput');
+            stars.forEach(star => {
+                star.addEventListener('click', function () {
+                    const rating = this.getAttribute('data-rating');
+                    ratingInput.value = rating;
+                    stars.forEach(s => {
+                        if (s.getAttribute('data-rating') <= rating) {
+                            s.classList.remove('bi-star'); s.classList.add('bi-star-fill');
+                        } else {
+                            s.classList.remove('bi-star-fill'); s.classList.add('bi-star');
+                        }
+                    });
+                });
+            });
+
+            // ── Return Image Upload ────────────────────────────────────────────
+            const MAX_IMAGES = 3;
+            const MAX_MB = 2;
+            let selectedImages = []; // [{ name, base64 }]
+
+            const fileInput   = document.getElementById('returnImagesInput');
+            const previewCont = document.getElementById('imagePreviewContainer');
+            const hiddenInput = document.getElementById('returnImageData');
+            const dropZone    = document.getElementById('dropZone');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', function () { handleFiles(this.files); this.value = ''; });
+            }
+            if (dropZone) {
+                dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#ffc107'; });
+                dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#dee2e6'; });
+                dropZone.addEventListener('drop', e => {
+                    e.preventDefault(); dropZone.style.borderColor = '#dee2e6';
+                    handleFiles(e.dataTransfer.files);
+                });
+            }
+
+            function handleFiles(files) {
+                const remaining = MAX_IMAGES - selectedImages.length;
+                if (remaining <= 0) { alert('You can only attach up to ' + MAX_IMAGES + ' images.'); return; }
+                let added = 0;
+                Array.from(files).forEach(file => {
+                    if (added >= remaining) return;
+                    if (!file.type.startsWith('image/')) { alert('"' + file.name + '" is not an image.'); return; }
+                    if (file.size > MAX_MB * 1024 * 1024) { alert('"' + file.name + '" exceeds ' + MAX_MB + 'MB limit.'); return; }
+                    const reader = new FileReader();
+                    reader.onload = e => { selectedImages.push({ name: file.name, base64: e.target.result }); renderPreviews(); };
+                    reader.readAsDataURL(file);
+                    added++;
+                });
+            }
+
+            function renderPreviews() {
+                previewCont.innerHTML = '';
+                selectedImages.forEach((img, idx) => {
+                    const col = document.createElement('div');
+                    col.className = 'col-4';
+                    col.innerHTML = `<div class="position-relative rounded-3 overflow-hidden" style="height:110px;">
+                        <img src="${img.base64}" class="w-100 h-100" style="object-fit:cover;" alt="${img.name}" />
+                        <button type="button" onclick="removeImage(${idx})"
+                            class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 rounded-circle p-0 d-flex align-items-center justify-content-center"
+                            style="width:22px;height:22px;font-size:11px;"><i class="bi bi-x"></i></button>
+                        <div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-50 text-white px-2 py-1" style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${img.name}</div>
+                    </div>`;
+                    previewCont.appendChild(col);
+                });
+                previewCont.style.display = selectedImages.length > 0 ? 'flex' : 'none';
+                hiddenInput.value = JSON.stringify(selectedImages.map(i => i.base64));
+            }
+
+            window.removeImage = idx => { selectedImages.splice(idx, 1); renderPreviews(); };
+
+            const returnModal = document.getElementById('returnModal');
+            if (returnModal) {
+                returnModal.addEventListener('hidden.bs.modal', () => { selectedImages = []; renderPreviews(); });
+            }
+        });
+    </script>
+}
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .hover-primary:hover {
+        color: var(--bs-primary) !important;
+    }
+    .rating-stars i {
+        transition: transform 0.1s ease;
+    }
+    .rating-stars i:hover {
+        transform: scale(1.2);
+    }
+</style>

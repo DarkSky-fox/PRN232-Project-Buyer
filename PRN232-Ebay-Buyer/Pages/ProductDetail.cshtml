@@ -440,6 +440,13 @@
                                     <span class="stock-badge out-of-stock">✕ Out of Stock</span>
                                 }
                             </div>
+                            
+                                <div class="action-buttons my-4">
+                                    <button class="btn btn-lg btn-danger px-5" style="background: linear-gradient(135deg, #e94560, #c0392b); border: none; border-radius: 10px; font-weight: bold;"
+                                    onclick="addToCart(@p.Id, '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(p.Title))', @(p.Price?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "0"), '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(p.Images?.Split(',').FirstOrDefault() ?? ""))')">
+                                        🛒 Add to Cart
+                                    </button>
+                                </div>
 
                             <!-- Description -->
                             @if (!string.IsNullOrEmpty(p.Description))

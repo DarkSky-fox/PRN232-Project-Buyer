@@ -52,7 +52,7 @@ public class ProductsModel : PageModel
         var client = _httpClientFactory.CreateClient("AuthApi");
 
         // Forward JWT token if user is authenticated
-        var token = HttpContext.Request.Cookies["JwtToken"];
+        var token = HttpContext.Request.Cookies["BearerToken"];
         if (!string.IsNullOrEmpty(token))
         {
             client.DefaultRequestHeaders.Authorization =
