@@ -46,7 +46,7 @@ public class OrderListController : ControllerBase
             .Include(o => o.OrderItems)
             .Include(o => o.Payments)
             .Include(o => o.ReturnRequests)
-            .Where(o => o.BuyerId == userId && (o.Status != "Pending" || o.Payments.Any(p => p.Status == "Paid" || p.Status == "Completed" || p.Method == "COD")));
+            .Where(o => o.BuyerId == userId && o.Status != "Cart");
 
         // Lọc theo status nếu có
         if (!string.IsNullOrWhiteSpace(status))

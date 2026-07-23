@@ -1,0 +1,294 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Order.PaypalMockModel
+@{
+    Layout = null; // Standalone PayPal Gateway Layout for true payment gateway experience
+    var details = Model.Details;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PayPal Checkout - Order #@Model.OrderId</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #2c2e2f;
+        }
+
+        .paypal-navbar {
+            background-color: #003087;
+            padding: 12px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .paypal-logo {
+            font-size: 26px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+            font-style: italic;
+        }
+        .paypal-logo span {
+            color: #0079C1;
+        }
+
+        .paypal-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border: 1px solid #e5e9f2;
+        }
+
+        .btn-paypal-primary {
+            background-color: #FFC439;
+            color: #111111;
+            font-weight: 700;
+            font-size: 16px;
+            border-radius: 25px;
+            border: none;
+            padding: 14px 24px;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-paypal-primary:hover {
+            background-color: #F2BA36;
+            color: #000000;
+            box-shadow: 0 4px 12px rgba(255, 196, 57, 0.4);
+        }
+
+        .sandbox-badge {
+            background-color: #ffc107;
+            color: #000;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .payment-method-box {
+            border: 2px solid #0079C1;
+            background-color: #f0f7fc;
+            border-radius: 10px;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header class="paypal-navbar mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <span class="paypal-logo"><i class="bi bi-paypal me-1"></i>Pay<span>Pal</span></span>
+                <span class="sandbox-badge ms-2"><i class="bi bi-gear-fill me-1"></i>Sandbox Gateway</span>
+            </div>
+            <div class="text-white small opacity-75">
+                <i class="bi bi-shield-lock-fill me-1"></i> Secure 256-Bit SSL Encryption
+            </div>
+        </div>
+    </header>
+
+    <div class="container py-3" style="max-width: 960px;">
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger shadow-sm rounded-4 p-4 text-center">
+                <i class="bi bi-exclamation-triangle-fill fs-1 text-danger d-block mb-2"></i>
+                <h5 class="fw-bold">Payment Error</h5>
+                <p class="mb-3">@Model.ErrorMessage</p>
+                <a href="/Order/Index" class="btn btn-outline-secondary rounded-pill px-4">Back to Orders</a>
+            </div>
+        }
+        else if (details == null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Loading PayPal Checkout...</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                <!-- Left Column: PayPal Payment Form -->
+                <div class="col-lg-7">
+                    <div class="paypal-card p-4 mb-4">
+                        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="bi bi-person-fill fs-5"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">sb-buyer@ebay.com</h6>
+                                    <small class="text-muted">Simulated Sandbox Buyer Account</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 rounded-pill">Verified</span>
+                        </div>
+
+                        <h5 class="fw-bold mb-3">Pay with PayPal</h5>
+
+                        <!-- Selected Payment Method -->
+                        <div class="payment-method-box mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-wallet2 text-primary fs-4"></i>
+                                    <div>
+                                        <strong class="d-block">PayPal Balance</strong>
+                                        <small class="text-muted">Available: $5,000.00 USD</small>
+                                    </div>
+                                </div>
+                                <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+                            </div>
+                        </div>
+
+                        <!-- Secondary Option -->
+                        <div class="border rounded-3 p-3 mb-4 text-muted bg-light d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-credit-card fs-4 text-secondary"></i>
+                                <div>
+                                    <span class="d-block fw-semibold text-dark">Visa **** 4242</span>
+                                    <small>Backup payment method</small>
+                                </div>
+                            </div>
+                            <small class="text-primary cursor-pointer">Change</small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div id="paymentActions">
+                            <button id="btnPayNow" class="btn-paypal-primary mb-3" onclick="completePayment()">
+                                Complete Payment ($@details.TotalAmount.ToString("N2"))
+                            </button>
+
+                            <div class="text-center">
+                                <a href="javascript:void(0)" onclick="cancelPayment()" class="text-decoration-none text-muted small hover-underline">
+                                    <i class="bi bi-x-circle me-1"></i> Cancel and return to store
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Processing Spinner -->
+                        <div id="paymentStatusBox" class="text-center py-4 d-none">
+                            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                            <h6 id="statusMessage" class="fw-bold text-dark">Processing payment with PayPal...</h6>
+                            <p class="text-muted small">Please do not close or refresh this window.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Order Details -->
+                <div class="col-lg-5">
+                    <div class="paypal-card p-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                            <span class="text-muted">Ship to</span>
+                            <span class="fw-semibold text-dark">@details.Address?.FullName</span>
+                        </div>
+                        <p class="small text-muted mb-3">
+                            @details.Address?.Street, @details.Address?.City, @details.Address?.State, @details.Address?.Country
+                        </p>
+
+                        <div class="border-top pt-3 mb-3">
+                            <h6 class="fw-bold mb-3">Order Details (Order #@details.OrderId)</h6>
+                            @foreach (var item in details.Items)
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="d-flex align-items-center gap-2" style="max-width: 75%;">
+                                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                        {
+                                            <img src="@item.ImageUrl" class="rounded" style="width: 36px; height: 36px; object-fit: cover;" alt="" />
+                                        }
+                                        <span class="small text-truncate">@item.Quantity &times; @item.Title</span>
+                                    </div>
+                                    <span class="small fw-semibold">$@((item.Price * item.Quantity).ToString("N2"))</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted small">Subtotal</span>
+                                <span class="small">$@details.TotalAmount.ToString("N2")</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small">Shipping & Handling</span>
+                                <span class="small text-success">Free</span>
+                            </div>
+                            <hr class="my-2" />
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="fs-5">Total</strong>
+                                <strong class="fs-4 text-primary">$@details.TotalAmount.ToString("N2") USD</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <script>
+        const orderId = @Model.OrderId;
+        let jwtToken = document.cookie.match(new RegExp('(^| )BearerToken=([^;]+)'))?.[2];
+
+        async function completePayment() {
+            if(!jwtToken) {
+                alert("Session expired. Please log in again.");
+                return window.location = "/Auth/Login";
+            }
+
+            document.getElementById('paymentActions').classList.add('d-none');
+            document.getElementById('paymentStatusBox').classList.remove('d-none');
+
+            try {
+                let res = await fetch('http://localhost:5001/api/Payment/paypal/capture', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    body: JSON.stringify({ OrderId: orderId, PayerEmail: "sb-buyer@ebay.com" })
+                });
+
+                let data = await res.json();
+                if(data.success) {
+                    document.getElementById('statusMessage').innerHTML = '<i class="bi bi-check-circle-fill text-success fs-2 d-block mb-2"></i> Payment Successful!';
+                    setTimeout(() => {
+                        window.location = "/Order/Detail?id=" + orderId + "&paid=true";
+                    }, 1200);
+                } else {
+                    alert("PayPal payment failed: " + data.message);
+                    document.getElementById('paymentActions').classList.remove('d-none');
+                    document.getElementById('paymentStatusBox').classList.add('d-none');
+                }
+            } catch(err) {
+                console.error(err);
+                alert("Error connecting to payment service.");
+                document.getElementById('paymentActions').classList.remove('d-none');
+                document.getElementById('paymentStatusBox').classList.add('d-none');
+            }
+        }
+
+        async function cancelPayment() {
+            if(!confirm("Are you sure you want to cancel this PayPal payment?")) return;
+
+            try {
+                await fetch('http://localhost:5001/api/Payment/paypal/cancel', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    body: JSON.stringify({ OrderId: orderId })
+                });
+            } catch(e) { console.error(e); }
+
+            window.location = "/Order/Detail?id=" + orderId;
+        }
+    </script>
+</body>
+</html>

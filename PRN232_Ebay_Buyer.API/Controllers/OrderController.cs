@@ -92,9 +92,12 @@ public class OrderController : ControllerBase
         if (req.AddressId <= 0)
             return BadRequest(new ApiResponse<string>(false, "Invalid address", null));
 
+        string paymentMethod = string.Equals(req.PaymentMethod, "PayPal", StringComparison.OrdinalIgnoreCase) ? "PayPal" : "COD";
         decimal total = req.Items.Sum(i => i.Price * i.Quantity);
 
-        // Process cart (either new order or update the existing "Cart" status order to "Pending")
+        string initialOrderStatus = paymentMethod == "PayPal" ? "Pending Payment" : "Pending";
+
+        // Process cart (either new order or update the existing "Cart" status order)
         var cartOrder = await _context.OrderTables
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.BuyerId == userId && o.Status == "Cart");
@@ -103,7 +106,7 @@ public class OrderController : ControllerBase
         if (cartOrder != null)
         {
             order = cartOrder;
-            order.Status = "Pending";
+            order.Status = initialOrderStatus;
             order.AddressId = req.AddressId;
             order.OrderDate = DateTime.Now;
             order.TotalPrice = total;
@@ -119,7 +122,7 @@ public class OrderController : ControllerBase
                 AddressId = req.AddressId,
                 OrderDate = DateTime.Now,
                 TotalPrice = total,
-                Status = "Pending"
+                Status = initialOrderStatus
             };
             _context.OrderTables.Add(order);
         }
@@ -137,7 +140,7 @@ public class OrderController : ControllerBase
             });
             // Update stock quantity
             var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductId == item.ProductId);
-            if(inventory != null && inventory.Quantity >= item.Quantity)
+            if (inventory != null && inventory.Quantity >= item.Quantity)
             {
                 inventory.Quantity -= item.Quantity;
             }
@@ -148,7 +151,7 @@ public class OrderController : ControllerBase
             OrderId = order.Id,
             UserId = userId,
             Amount = total,
-            Method = "COD", // Hardcoded COD
+            Method = paymentMethod,
             Status = "Pending",
             PaidAt = null
         };
@@ -156,6 +159,14 @@ public class OrderController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(new ApiResponse<int>(true, "Order placed successfully", order.Id));
+        var responseData = new CheckoutResponse
+        {
+            OrderId = order.Id,
+            PaymentMethod = paymentMethod,
+            PaypalRedirectUrl = paymentMethod == "PayPal" ? $"/Order/PaypalMock?orderId={order.Id}" : null
+        };
+
+        return Ok(new ApiResponse<CheckoutResponse>(true, "Order placed successfully", responseData));
     }
 }
+

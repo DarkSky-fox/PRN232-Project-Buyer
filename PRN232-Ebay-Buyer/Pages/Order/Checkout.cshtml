@@ -73,12 +73,25 @@
                     <h5 class="mb-0">Payment Method</h5>
                 </div>
                 <div class="card-body">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="paymentMethod" id="payCOD" value="COD" checked>
-                        <label class="form-check-label fw-bold" for="payCOD">
+                    <div class="form-check p-3 rounded border mb-3 cursor-pointer" onclick="document.getElementById('payCOD').checked = true;">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="paymentMethod" id="payCOD" value="COD" checked>
+                        <label class="form-check-label fw-bold cursor-pointer ms-2" for="payCOD">
                             💵 Cash on Delivery (COD)
                         </label>
-                        <p class="text-muted small mt-1">Due to system limits, currently only COD is available.</p>
+                        <p class="text-muted small mb-0 ms-4 mt-1">Pay with cash when your items are delivered to your door.</p>
+                    </div>
+
+                    <div class="form-check p-3 rounded border border-primary bg-light cursor-pointer" onclick="document.getElementById('payPayPal').checked = true;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <input class="form-check-input ms-0 me-2" type="radio" name="paymentMethod" id="payPayPal" value="PayPal">
+                                <label class="form-check-label fw-bold text-primary cursor-pointer ms-2" for="payPayPal">
+                                    <i class="bi bi-paypal fs-5 me-1 text-primary"></i> PayPal (Simulated Sandbox)
+                                </label>
+                                <p class="text-muted small mb-0 ms-4 mt-1">Fast & secure payment via PayPal Gateway simulation.</p>
+                            </div>
+                            <span class="badge bg-warning text-dark px-2 py-1">Sandbox</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -123,7 +136,7 @@
         function renderCheckoutCart() {
             let cart = getCart();
             if(cart.length === 0) {
-                window.location = "/Cart";
+                window.location = "/Order/Cart";
                 return;
             }
 
@@ -188,9 +201,11 @@
             let cart = getCart();
             if(cart.length === 0) return alert("Cart is empty.");
 
+            let selectedMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || "COD";
+
             let payload = {
                 AddressId: selectedAddressId,
-                PaymentMethod: "COD",
+                PaymentMethod: selectedMethod,
                 Items: cart
             };
 
@@ -204,9 +219,18 @@
                 });
                 let res = await r.json();
                 if(res.success) {
-                    alert("Order placed successfully!");
                     saveCart([]); // clear cart
-                    window.location = "/Profile";
+                    if(res.data && res.data.paypalRedirectUrl) {
+                        window.location = res.data.paypalRedirectUrl;
+                    } else {
+                        alert("Order placed successfully!");
+                        let orderId = res.data ? (res.data.orderId || res.data) : null;
+                        if(orderId) {
+                            window.location = "/Order/Detail?id=" + orderId;
+                        } else {
+                            window.location = "/Profile";
+                        }
+                    }
                 } else {
                     document.getElementById('checkoutError').innerText = res.message;
                 }
