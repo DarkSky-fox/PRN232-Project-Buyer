@@ -1,0 +1,139 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Order.IndexModel
+@{
+    ViewData["Title"] = "Order History";
+    var statuses = new[] { "All", "Processing", "Shipped", "Delivered" };
+}
+
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2 text-primary"></i>My Orders</h2>
+            <p class="text-muted mt-1">Track, manage, and review your past purchases.</p>
+        </div>
+    </div>
+
+    <!-- Status Filter Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3">
+        @foreach (var s in statuses)
+        {
+            var isActive = (string.IsNullOrEmpty(Model.CurrentStatus) && s == "All") || Model.CurrentStatus == s;
+            <li class="nav-item">
+                <a class="nav-link @(isActive ? "active rounded-pill shadow-sm bg-primary" : "text-muted border rounded-pill bg-white")" 
+                   href="?status=@(s == "All" ? "" : s)&pageNumber=1">
+                    @s
+                </a>
+            </li>
+        }
+    </ul>
+
+    <!-- Order List -->
+    @if (Model.Orders == null || !Model.Orders.Items.Any())
+    {
+        <div class="text-center py-5 bg-white rounded shadow-sm border-0">
+            <i class="bi bi-inbox text-muted display-1"></i>
+            <h4 class="mt-3 text-secondary">No orders found</h4>
+            <p class="text-muted">You haven't placed any orders yet, or no orders match this status.</p>
+            <a href="/Products" class="btn btn-primary mt-3 px-4 rounded-pill">Start Shopping</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var order in Model.Orders.Items)
+            {
+                var hasCancelRequest = !string.IsNullOrEmpty(order.CancelRequestStatus);
+                string badgeClass, badgeText;
+
+                if (hasCancelRequest)
+                {
+                    // Đơn đang có yêu cầu hủy → ưu tiên hiển thị trạng thái cancel
+                    (badgeClass, badgeText) = order.CancelRequestStatus switch
+                    {
+                        "Pending"  => ("bg-warning text-dark", "Cancel: Pending"),
+                        "Approved" => ("bg-danger text-white", "Cancelled"),
+                        _          => ("bg-secondary text-white", $"Cancel: {order.CancelRequestStatus}")
+                    };
+                }
+                else
+                {
+                    (badgeClass, badgeText) = order.Status switch
+                    {
+                        "Delivered"  => ("bg-success text-white", "Delivered"),
+                        "Shipped"    => ("bg-info text-dark", "Shipped"),
+                        "Processing" => ("bg-primary text-white", "Processing"),
+                        _            => ("bg-secondary text-white", order.Status ?? "Unknown")
+                    };
+                }
+
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100 transition-hover">
+                        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted small">Order ID</span>
+                                <h6 class="mb-0 fw-bold">#@order.Id</h6>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge @badgeClass px-3 py-2 rounded-pill shadow-sm">
+                                    <i class="bi bi-circle-fill small me-1"></i> @badgeText
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <p class="text-muted small mb-1">Date Placed</p>
+                                    <h6 class="fw-semibold">@(order.OrderDate?.ToString("MMM dd, yyyy - hh:mm tt") ?? "-")</h6>
+                                </div>
+                                <div class="col-md-4 mb-3 mb-md-0">
+                                    <p class="text-muted small mb-1">Total Items</p>
+                                    <h6 class="fw-semibold"><i class="bi bi-cart3 me-1"></i>@order.ItemCount items</h6>
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <p class="text-muted small mb-1">Total Price</p>
+                                    <h5 class="fw-bold text-success mb-0">$@(order.TotalPrice?.ToString("N2") ?? "0.00")</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light border-top-0 py-3 text-end">
+                            <a href="/Order/Detail?id=@order.Id" class="btn btn-outline-primary rounded-pill px-4">
+                                View Details <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.Orders.TotalPages > 1)
+        {
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(Model.Orders.PageNumber == 1 ? "disabled" : "")">
+                        <a class="page-link rounded-start-pill" href="?status=@Model.CurrentStatus&pageNumber=@(Model.Orders.PageNumber - 1)">Previous</a>
+                    </li>
+                    @for (int i = 1; i <= Model.Orders.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.Orders.PageNumber ? "active" : "")">
+                            <a class="page-link" href="?status=@Model.CurrentStatus&pageNumber=@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Orders.PageNumber == Model.Orders.TotalPages ? "disabled" : "")">
+                        <a class="page-link rounded-end-pill" href="?status=@Model.CurrentStatus&pageNumber=@(Model.Orders.PageNumber + 1)">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>
+
+<style>
+    .transition-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .transition-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+</style>
