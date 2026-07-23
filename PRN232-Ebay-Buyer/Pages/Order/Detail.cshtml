@@ -155,10 +155,22 @@
                                             
                                             @if (order.Status == "Delivered")
                                             {
-                                                <button class="btn btn-sm btn-outline-primary rounded-pill mt-2" 
-                                                        onclick="openReviewModal(@item.ProductId, '@item.ProductTitle')">
-                                                    <i class="bi bi-star-fill text-warning me-1"></i> Write Review
-                                                </button>
+                                                var _ = Model.UserReviews.TryGetValue(item.ProductId, out var existingReview);
+                                                bool hasReviewed = existingReview != null;
+                                                if (hasReviewed)
+                                                {
+                                                    <button class="btn btn-sm btn-warning rounded-pill mt-2 text-dark fw-semibold"
+                                                            onclick="openReviewModal(@item.ProductId, '@item.ProductTitle', @existingReview!.Id, @existingReview!.Rating, '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(existingReview!.Comment ?? ""))')">
+                                                        <i class="bi bi-pencil-fill me-1"></i> Edit Review
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-sm btn-outline-primary rounded-pill mt-2"
+                                                            onclick="openReviewModal(@item.ProductId, '@item.ProductTitle', 0, 5, '')">
+                                                        <i class="bi bi-star-fill text-warning me-1"></i> Write Review
+                                                    </button>
+                                                }
                                             }
                                         </div>
                                     </div>
@@ -319,12 +331,12 @@
     </div>
 </div>
 
-<!-- Write Review Modal -->
+<!-- Write / Edit Review Modal -->
 <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow">
             <div class="modal-header border-bottom-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-star-fill text-warning me-2"></i>Write a Review</h5>
+                <h5 class="modal-title fw-bold" id="reviewModalTitle"><i class="bi bi-star-fill text-warning me-2"></i>Write a Review</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" asp-page-handler="Review">
@@ -333,26 +345,28 @@
                     <input type="hidden" asp-for="OrderId" />
                     <input type="hidden" asp-for="ReviewProductId" id="reviewProductId" />
                     <input type="hidden" asp-for="ReviewRating" id="reviewRatingInput" value="5" />
+                    <input type="hidden" asp-for="ReviewId" id="reviewIdInput" value="0" />
                     
                     <div class="mb-4 text-center">
                         <label class="form-label fw-semibold d-block">Overall Rating</label>
-                        <div class="rating-stars fs-2 text-warning cursor-pointer" id="ratingContainer">
-                            <i class="bi bi-star-fill" data-rating="1"></i>
-                            <i class="bi bi-star-fill" data-rating="2"></i>
-                            <i class="bi bi-star-fill" data-rating="3"></i>
-                            <i class="bi bi-star-fill" data-rating="4"></i>
-                            <i class="bi bi-star-fill" data-rating="5"></i>
+                        <div id="ratingContainer" style="display:inline-flex; gap:6px; cursor:pointer;">
+                            <span class="star-item" data-rating="1" style="font-size:2.2rem; color:#e0e0e0; transition:transform 0.15s, color 0.15s; user-select:none;">★</span>
+                            <span class="star-item" data-rating="2" style="font-size:2.2rem; color:#e0e0e0; transition:transform 0.15s, color 0.15s; user-select:none;">★</span>
+                            <span class="star-item" data-rating="3" style="font-size:2.2rem; color:#e0e0e0; transition:transform 0.15s, color 0.15s; user-select:none;">★</span>
+                            <span class="star-item" data-rating="4" style="font-size:2.2rem; color:#e0e0e0; transition:transform 0.15s, color 0.15s; user-select:none;">★</span>
+                            <span class="star-item" data-rating="5" style="font-size:2.2rem; color:#e0e0e0; transition:transform 0.15s, color 0.15s; user-select:none;">★</span>
                         </div>
+                        <small class="text-muted d-block mt-1" id="ratingLabel">Select a rating</small>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Your Comment</label>
-                        <textarea asp-for="ReviewComment" class="form-control rounded-3" rows="4" required placeholder="What did you like or dislike?"></textarea>
+                        <textarea asp-for="ReviewComment" id="reviewCommentArea" class="form-control rounded-3" rows="4" required placeholder="What did you like or dislike?"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Review</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4" id="reviewSubmitBtn">Submit Review</button>
                 </div>
             </form>
         </div>
@@ -362,28 +376,62 @@
 @section Scripts {
     <script>
         // ── Review Modal ───────────────────────────────────────────────────────
-        function openReviewModal(productId, productTitle) {
+        const ratingLabels = ['', '1 star – Poor', '2 stars – Fair', '3 stars – Good', '4 stars – Very Good', '5 stars – Excellent'];
+
+        function setStars(rating) {
+            const stars = document.querySelectorAll('#ratingContainer .star-item');
+            const ratingInput = document.getElementById('reviewRatingInput');
+            ratingInput.value = rating;
+            stars.forEach(s => {
+                const r = parseInt(s.getAttribute('data-rating'));
+                s.style.color = r <= rating ? '#f39c12' : '#e0e0e0';
+                s.style.transform = 'scale(1)';
+            });
+            const label = document.getElementById('ratingLabel');
+            if (label) label.textContent = ratingLabels[rating] || '';
+        }
+
+        function openReviewModal(productId, productTitle, reviewId, currentRating, currentComment) {
+            reviewId = reviewId || 0;
+            currentRating = currentRating || 5;
+            currentComment = currentComment || '';
+
             document.getElementById('reviewProductId').value = productId;
+            document.getElementById('reviewIdInput').value = reviewId;
             document.getElementById('reviewProductTitle').innerText = 'Reviewing: ' + productTitle;
+            document.getElementById('reviewCommentArea').value = currentComment;
+
+            const isEdit = reviewId > 0;
+            document.getElementById('reviewModalTitle').innerHTML =
+                (isEdit ? '✏️' : '⭐') + ' ' +
+                (isEdit ? 'Edit Your Review' : 'Write a Review');
+            document.getElementById('reviewSubmitBtn').textContent =
+                isEdit ? 'Update Review' : 'Submit Review';
+
+            setStars(currentRating);
+
             var modal = new bootstrap.Modal(document.getElementById('reviewModal'));
             modal.show();
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Star Rating Logic
-            const stars = document.querySelectorAll('#ratingContainer i');
-            const ratingInput = document.getElementById('reviewRatingInput');
+            // Star Rating Click Logic
+            const stars = document.querySelectorAll('#ratingContainer .star-item');
             stars.forEach(star => {
                 star.addEventListener('click', function () {
-                    const rating = this.getAttribute('data-rating');
-                    ratingInput.value = rating;
+                    setStars(parseInt(this.getAttribute('data-rating')));
+                });
+                star.addEventListener('mouseenter', function () {
+                    const hoverRating = parseInt(this.getAttribute('data-rating'));
                     stars.forEach(s => {
-                        if (s.getAttribute('data-rating') <= rating) {
-                            s.classList.remove('bi-star'); s.classList.add('bi-star-fill');
-                        } else {
-                            s.classList.remove('bi-star-fill'); s.classList.add('bi-star');
-                        }
+                        const r = parseInt(s.getAttribute('data-rating'));
+                        s.style.color = r <= hoverRating ? '#f39c12' : '#e0e0e0';
+                        s.style.transform = r <= hoverRating ? 'scale(1.2)' : 'scale(1)';
                     });
+                });
+                star.addEventListener('mouseleave', function () {
+                    const current = parseInt(document.getElementById('reviewRatingInput').value) || 0;
+                    setStars(current);
                 });
             });
 
