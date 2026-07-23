@@ -1,0 +1,150 @@
+############################################################
+#  docker-compose.yml  –  PRN232 eBay Buyer
+#  Load Balancing: Nginx + 3 API instances + 1 Frontend
+############################################################
+
+services:
+
+  # ── Nginx: Reverse Proxy + Load Balancer ────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: prn232_nginx
+    ports:
+      - "80:80"                     # HTTP entry point (Client → Nginx)
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api1:
+        condition: service_healthy
+      api2:
+        condition: service_healthy
+      api3:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - prn232_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── API Instance 1 ───────────────────────────────────────────────────────────
+  api1:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: prn232_api1
+    environment:
+      - INSTANCE_ID=api-instance-1
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      # Override connection string (trỏ về SQL Server trên host)
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=CloneEbayDB;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False
+      - Jwt__Key=PRN232_Ebay_Buyer_SuperSecretKey_MustBeAtLeast32CharactersLong!
+      - Jwt__Issuer=PRN232_Ebay_Buyer.API
+      - Jwt__Audience=PRN232_Ebay_Buyer.Frontend
+      - AllowedOrigins__0=http://localhost
+      - AllowedOrigins__1=http://localhost:5000
+    expose:
+      - "8080"                      # Chỉ expose trong Docker network
+    networks:
+      - prn232_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── API Instance 2 ───────────────────────────────────────────────────────────
+  api2:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: prn232_api2
+    environment:
+      - INSTANCE_ID=api-instance-2
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=CloneEbayDB;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False
+      - Jwt__Key=PRN232_Ebay_Buyer_SuperSecretKey_MustBeAtLeast32CharactersLong!
+      - Jwt__Issuer=PRN232_Ebay_Buyer.API
+      - Jwt__Audience=PRN232_Ebay_Buyer.Frontend
+      - AllowedOrigins__0=http://localhost
+      - AllowedOrigins__1=http://localhost:5000
+    expose:
+      - "8080"
+    networks:
+      - prn232_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── API Instance 3 ───────────────────────────────────────────────────────────
+  api3:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: prn232_api3
+    environment:
+      - INSTANCE_ID=api-instance-3
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=host.docker.internal,1433;Database=CloneEbayDB;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False
+      - Jwt__Key=PRN232_Ebay_Buyer_SuperSecretKey_MustBeAtLeast32CharactersLong!
+      - Jwt__Issuer=PRN232_Ebay_Buyer.API
+      - Jwt__Audience=PRN232_Ebay_Buyer.Frontend
+      - AllowedOrigins__0=http://localhost
+      - AllowedOrigins__1=http://localhost:5000
+    expose:
+      - "8080"
+    networks:
+      - prn232_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: prn232_frontend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      # Frontend gọi API qua Nginx nội bộ (internal DNS)
+      - ApiBaseUrl=http://nginx
+    expose:
+      - "8080"
+    depends_on:
+      - api1
+      - api2
+      - api3
+    networks:
+      - prn232_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+# ── Network ───────────────────────────────────────────────────────────────────
+networks:
+  prn232_network:
+    driver: bridge
+    name: prn232_network

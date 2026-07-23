@@ -1,0 +1,40 @@
+# ── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy csproj và restore trước (tận dụng Docker layer cache)
+COPY ["PRN232_Ebay_Buyer.API/PRN232_Ebay_Buyer.API.csproj", "PRN232_Ebay_Buyer.API/"]
+RUN dotnet restore "PRN232_Ebay_Buyer.API/PRN232_Ebay_Buyer.API.csproj"
+
+# Copy toàn bộ source
+COPY PRN232_Ebay_Buyer.API/ PRN232_Ebay_Buyer.API/
+
+# Build và publish
+WORKDIR "/src/PRN232_Ebay_Buyer.API"
+RUN dotnet publish "PRN232_Ebay_Buyer.API.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+# Cài tzdata để timezone đúng
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Ho_Chi_Minh
+
+COPY --from=build /app/publish .
+
+# Port ứng dụng lắng nghe bên trong container
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+# Healthcheck cho Docker (bổ sung ngoài Nginx passive check)
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "PRN232_Ebay_Buyer.API.dll"]

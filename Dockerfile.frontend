@@ -1,0 +1,38 @@
+# ── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore dependencies (API csproj được frontend reference)
+COPY ["PRN232-Ebay-Buyer/PRN232-Ebay-Buyer.csproj", "PRN232-Ebay-Buyer/"]
+COPY ["PRN232_Ebay_Buyer.API/PRN232_Ebay_Buyer.API.csproj", "PRN232_Ebay_Buyer.API/"]
+RUN dotnet restore "PRN232-Ebay-Buyer/PRN232-Ebay-Buyer.csproj"
+
+# Copy toàn bộ source
+COPY PRN232-Ebay-Buyer/ PRN232-Ebay-Buyer/
+COPY PRN232_Ebay_Buyer.API/ PRN232_Ebay_Buyer.API/
+
+WORKDIR "/src/PRN232-Ebay-Buyer"
+RUN dotnet publish "PRN232-Ebay-Buyer.csproj" \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Asia/Ho_Chi_Minh
+
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
+
+ENTRYPOINT ["dotnet", "PRN232-Ebay-Buyer.dll"]

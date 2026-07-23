@@ -1,0 +1,17 @@
+**/.git
+**/.gitignore
+**/bin
+**/obj
+**/*.user
+**/*.suo
+**/.vs
+**/node_modules
+**/Thumbs.db
+**/*.md
+**/docs
+.dockerignore
+docker-compose*.yml
+nginx/
+scripts/
+*.docx
+*.sql
