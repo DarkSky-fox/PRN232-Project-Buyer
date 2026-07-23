@@ -99,6 +99,10 @@ public class LoginModel : PageModel
 
                     _logger.LogInformation("User {Email} logged in successfully.", Email);
 
+                    if (role == "Admin")
+                    {
+                        return RedirectToPage("/Admin/Index");
+                    }
                     return RedirectToPage("/Index");
                 }
 
