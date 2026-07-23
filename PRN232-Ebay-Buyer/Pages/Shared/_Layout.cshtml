@@ -3,83 +3,219 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - PRN232_Ebay_Buyer</title>
+    <title>@ViewData["Title"] - PRN232 eBay</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/PRN232-Ebay-Buyer.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">PRN232_Ebay_Buyer</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                        data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+
+    <!-- ══════════════════════════════════
+         1. TOP NAVBAR – minimal, quick-actions only
+         ══════════════════════════════════ -->
+    <header class="topbar">
+
+        <!-- Hamburger for mobile sidebar toggle -->
+        <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i class="bi bi-list"></i>
+        </button>
+
+        <!-- Brand (visible on mobile only; desktop shows it in sidebar) -->
+        <a class="topbar-brand d-md-none" asp-area="" asp-page="/Index">
+            <span class="brand-e">e</span><span class="brand-b">b</span><span class="brand-a">a</span><span class="brand-y">y</span>
+        </a>
+
+        <!-- Spacer -->
+        <div class="flex-grow-1"></div>
+
+        <!-- ── Quick-action icons ── -->
+        <div class="topbar-actions">
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <!-- Notifications -->
+                <button class="topbar-icon-btn" title="Notifications" aria-label="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="notif-dot"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Products">Products</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Order/Cart">
-                                🛒 Cart <span id="cartBadge" class="badge bg-danger" style="display: none;">0</span>
-                            </a>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Seller/MyProducts">My Shop</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Seller/AddProduct">Sell Item</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Order/Index">My Orders</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Profile">My Profile</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Profile" asp-page-handler="Logout">Sign Out</a>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Auth/Login">Login</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Auth/Register">Register</a>
-                            </li>
-                        }
-                    </ul>
-                </div>
-            </div>
-        </nav>
+
+                <!-- Cart -->
+                <a class="topbar-icon-btn" asp-area="" asp-page="/Order/Cart" title="Shopping Cart" aria-label="Cart">
+                    <i class="bi bi-cart3"></i>
+                    <span id="cartBadge" class="cart-badge" style="display:none;">0</span>
+                </a>
+            }
+            else
+            {
+                <!-- Cart (always visible) -->
+                <a class="topbar-icon-btn" asp-area="" asp-page="/Order/Cart" title="Shopping Cart" aria-label="Cart">
+                    <i class="bi bi-cart3"></i>
+                    <span id="cartBadge" class="cart-badge" style="display:none;">0</span>
+                </a>
+
+                <!-- Sign In -->
+                <a class="topbar-auth-btn topbar-login" asp-area="" asp-page="/Auth/Login">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                </a>
+
+                <!-- Register -->
+                <a class="topbar-auth-btn topbar-register" asp-area="" asp-page="/Auth/Register">
+                    <i class="bi bi-person-plus me-1"></i>Register
+                </a>
+            }
+        </div>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+
+    <!-- ══════════════════════════════════
+         2. SIDEBAR – full navigation
+         ══════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Sidebar Brand -->
+        <div class="sidebar-brand-wrap">
+            <a class="sidebar-brand" asp-area="" asp-page="/Index">
+                <span class="brand-e">e</span><span class="brand-b">b</span><span class="brand-a">a</span><span class="brand-y">y</span>
+                <span class="brand-tagline">Buyer</span>
+            </a>
+        </div>
+
+        <!-- Search inside sidebar -->
+        <div class="sidebar-search-wrap">
+            <form method="get" action="/Products">
+                <div class="sidebar-search">
+                    <i class="bi bi-search sidebar-search-icon"></i>
+                    <input type="text" name="Search" class="sidebar-search-input" placeholder="Search products..." />
+                </div>
+            </form>
+        </div>
+
+        <!-- ── Group 1: Explore ── -->
+        <div class="sidebar-section-label">Explore</div>
+        <nav class="sidebar-nav">
+            <a class="sidebar-link" asp-area="" asp-page="/Index" id="nav-home">
+                <i class="bi bi-house-door sidebar-link-icon"></i>
+                <span>Home</span>
+            </a>
+            <a class="sidebar-link" asp-area="" asp-page="/Products" id="nav-catalog">
+                <i class="bi bi-grid sidebar-link-icon"></i>
+                <span>Browse Products</span>
+            </a>
+        </nav>
+
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <!-- ── Group 2: Seller Hub ── -->
+            <div class="sidebar-section-label">Seller Hub</div>
+            <nav class="sidebar-nav">
+                <a class="sidebar-link" asp-page="/Seller/MyProducts" id="nav-seller-shop">
+                    <i class="bi bi-shop sidebar-link-icon"></i>
+                    <span>My Shop</span>
+                </a>
+                <a class="sidebar-link" asp-page="/Seller/AddProduct" id="nav-seller-add">
+                    <i class="bi bi-plus-circle sidebar-link-icon"></i>
+                    <span>Post New Item</span>
+                </a>
+            </nav>
+
+            <!-- ── Group 3: Account ── -->
+            <div class="sidebar-section-label">Account</div>
+            <nav class="sidebar-nav">
+                <a class="sidebar-link" asp-area="" asp-page="/Order/Index" id="nav-orders">
+                    <i class="bi bi-receipt sidebar-link-icon"></i>
+                    <span>My Orders</span>
+                </a>
+                <a class="sidebar-link" asp-area="" asp-page="/Profile" id="nav-profile">
+                    <i class="bi bi-person-circle sidebar-link-icon"></i>
+                    <span>My Profile</span>
+                </a>
+            </nav>
+
+            <!-- Sign Out at bottom -->
+            <div class="sidebar-footer">
+                <a class="sidebar-link sidebar-signout" asp-page="/Profile" asp-page-handler="Logout">
+                    <i class="bi bi-box-arrow-right sidebar-link-icon"></i>
+                    <span>Sign Out</span>
+                </a>
+            </div>
+        }
+        else
+        {
+            <!-- ── Not authenticated: show sign in / register ── -->
+            <div class="sidebar-section-label">Account</div>
+            <nav class="sidebar-nav">
+                <a class="sidebar-link" asp-area="" asp-page="/Auth/Login" id="nav-login">
+                    <i class="bi bi-box-arrow-in-right sidebar-link-icon"></i>
+                    <span>Sign In</span>
+                </a>
+                <a class="sidebar-link" asp-area="" asp-page="/Auth/Register" id="nav-register">
+                    <i class="bi bi-person-plus sidebar-link-icon"></i>
+                    <span>Register</span>
+                </a>
+            </nav>
+        }
+    </aside>
+
+    <!-- Mobile overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ══════════════════════════════════
+         3. MAIN CONTENT AREA
+         ══════════════════════════════════ -->
+    <div class="main-wrapper">
+        <main role="main" class="content-body">
             @RenderBody()
         </main>
+
+        <footer class="site-footer">
+            <div class="container text-center">
+                &copy; @DateTime.UtcNow.Year &mdash; PRN232 eBay Buyer &bull; Premium eCommerce Experience
+            </div>
+        </footer>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - PRN232_Ebay_Buyer
-        </div>
-    </footer>
-
+    <!-- Scripts -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        $(function () {
+            // ── Mobile sidebar toggle ──
+            $('#sidebarToggle, #sidebarOverlay').on('click', function () {
+                $('body').toggleClass('sidebar-open');
+            });
+
+            // ── Active nav highlight ──
+            var path = window.location.pathname.toLowerCase();
+            if (path === '/' || path === '/index') {
+                $('#nav-home').addClass('active');
+            } else if (path.startsWith('/products')) {
+                $('#nav-catalog').addClass('active');
+            } else if (path.startsWith('/seller/myproducts')) {
+                $('#nav-seller-shop').addClass('active');
+            } else if (path.startsWith('/seller/addproduct')) {
+                $('#nav-seller-add').addClass('active');
+            } else if (path.startsWith('/order')) {
+                $('#nav-orders').addClass('active');
+            } else if (path.startsWith('/profile')) {
+                $('#nav-profile').addClass('active');
+            } else if (path.startsWith('/auth/login')) {
+                $('#nav-login').addClass('active');
+            } else if (path.startsWith('/auth/register')) {
+                $('#nav-register').addClass('active');
+            }
+
+            // ── Cart badge from localStorage ──
+            var count = parseInt(localStorage.getItem('cartCount') || '0');
+            if (count > 0) {
+                $('#cartBadge').text(count).show();
+            }
+        });
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
