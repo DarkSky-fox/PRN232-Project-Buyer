@@ -46,7 +46,7 @@ public class DetailModel : PageModel
     [BindProperty]
     public int ReviewId { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int id)
+    public async Task<IActionResult> OnGetAsync(int id, bool paid = false)
     {
         var token = HttpContext.Request.Cookies["BearerToken"];
         if (string.IsNullOrEmpty(token))
