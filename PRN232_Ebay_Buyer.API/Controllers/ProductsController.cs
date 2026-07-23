@@ -27,7 +27,8 @@ public class ProductsController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] decimal? minPrice = null,
         [FromQuery] decimal? maxPrice = null,
-        [FromQuery] string? sortBy = null)
+        [FromQuery] string? sortBy = null,
+        [FromQuery] int? sellerId = null)
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 12;
@@ -49,6 +50,12 @@ public class ProductsController : ControllerBase
         {
             var searchTerm = search.Trim().ToLower();
             query = query.Where(p => p.Title != null && p.Title.ToLower().Contains(searchTerm));
+        }
+
+        // ── Filter by seller ──
+        if (sellerId.HasValue && sellerId.Value > 0)
+        {
+            query = query.Where(p => p.SellerId == sellerId.Value);
         }
 
         // ── Filter by price range ──
@@ -226,5 +233,84 @@ public class ProductsController : ControllerBase
 
         return Ok(new ApiResponse<List<CategoryDto>>(
             true, "Categories retrieved successfully.", categories));
+    }
+
+    // ─── POST /api/products ──────────────────────────────────────────────────
+    [HttpPost("products")]
+    public async Task<ActionResult<ApiResponse<ProductDto>>> CreateProduct(
+        [FromBody] CreateProductRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Title is required.", null));
+        }
+        if (request.Price <= 0)
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Price must be greater than 0.", null));
+        }
+        if (request.CategoryId <= 0)
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Category is required.", null));
+        }
+        if (request.SellerId <= 0)
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Seller is required.", null));
+        }
+
+        var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId);
+        if (!categoryExists)
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Category not found.", null));
+        }
+
+        var sellerExists = await _db.Users.AnyAsync(u => u.Id == request.SellerId);
+        if (!sellerExists)
+        {
+            return BadRequest(new ApiResponse<ProductDto>(false, "Seller not found.", null));
+        }
+
+        var product = new Product
+        {
+            Title = request.Title.Trim(),
+            Description = request.Description?.Trim(),
+            Price = request.Price,
+            Images = request.Images,
+            CategoryId = request.CategoryId,
+            SellerId = request.SellerId,
+            IsAuction = request.IsAuction,
+            AuctionEndTime = request.IsAuction ? request.AuctionEndTime : null
+        };
+
+        _db.Products.Add(product);
+        await _db.SaveChangesAsync();
+
+        // Tạo bản ghi Inventory tương ứng cho sản phẩm
+        var inventory = new Inventory
+        {
+            ProductId = product.Id,
+            Quantity = request.StockQuantity > 0 ? request.StockQuantity : 1,
+            LastUpdated = DateTime.UtcNow
+        };
+        _db.Inventories.Add(inventory);
+        await _db.SaveChangesAsync();
+
+        var seller = await _db.Users.FindAsync(product.SellerId);
+        var category = await _db.Categories.FindAsync(product.CategoryId);
+
+        var dto = new ProductDto(
+            product.Id,
+            product.Title,
+            product.Description,
+            product.Price,
+            product.Images,
+            product.CategoryId,
+            category?.Name,
+            product.SellerId,
+            seller?.Username,
+            product.IsAuction,
+            product.AuctionEndTime
+        );
+
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, new ApiResponse<ProductDto>(true, "Product created successfully.", dto));
     }
 }

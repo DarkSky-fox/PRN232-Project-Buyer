@@ -1,0 +1,218 @@
+@page
+@model PRN232_Ebay_Buyer.Pages.Seller.MyProductsModel
+@{
+    ViewData["Title"] = "Seller Dashboard";
+}
+
+<style>
+    .dashboard-container {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1d1d1f;
+    }
+
+    .glass-shell {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 24px;
+        padding: 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    }
+    
+    .inner-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid rgba(0, 0, 0, 0.03);
+        box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    }
+
+    .btn-premium {
+        background: #0071e3;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 0.65rem 1.25rem;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(0, 113, 227, 0.2);
+    }
+    
+    .btn-premium:hover {
+        background: #0077ed;
+        transform: translateY(-1px);
+        color: #fff;
+        box-shadow: 0 6px 16px rgba(0, 113, 227, 0.3);
+    }
+
+    .stat-card {
+        background: #f5f5f7;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid rgba(0,0,0,0.04);
+        transition: transform 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .product-img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.08);
+        background: #fff;
+    }
+
+    .table-premium th {
+        font-weight: 600;
+        color: #86868b;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #f5f5f7;
+        padding: 1rem;
+    }
+
+    .table-premium td {
+        vertical-align: middle;
+        padding: 1rem;
+        border-bottom: 1px solid #f5f5f7;
+        font-size: 0.95rem;
+    }
+
+    .format-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 10px;
+    }
+
+    .badge-buy-now {
+        background: rgba(0, 113, 227, 0.1);
+        color: #0071e3;
+    }
+
+    .badge-auction {
+        background: rgba(245, 99, 0, 0.1);
+        color: #f56300;
+    }
+</style>
+
+<div class="container py-5 dashboard-container">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="h2 font-weight-bold mb-1">Seller Dashboard</h2>
+            <p class="text-muted mb-0">Manage and track your products listed on eBay Clone.</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <a asp-page="/Seller/AddProduct" class="btn-premium">
+                ➕ List an Item
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <span class="text-secondary small font-weight-semibold">Total Listed Products</span>
+                <h3 class="h2 font-weight-bold mt-1 mb-0">@Model.Products.Count</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <span class="text-secondary small font-weight-semibold">Auction Format</span>
+                <h3 class="h2 font-weight-bold mt-1 mb-0">@Model.Products.Count(p => p.IsAuction == true)</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <span class="text-secondary small font-weight-semibold">Fixed Price Format</span>
+                <h3 class="h2 font-weight-bold mt-1 mb-0">@Model.Products.Count(p => p.IsAuction != true)</h3>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message) && !Model.IsSuccess)
+    {
+        <div class="alert alert-danger rounded-4 border-0 mb-4" role="alert">
+            @Model.Message
+        </div>
+    }
+
+    <div class="glass-shell">
+        <div class="inner-card p-4">
+            <h5 class="font-weight-bold mb-4">My Listed Items</h5>
+
+            @if (Model.Products.Count == 0)
+            {
+                <div class="text-center py-5">
+                    <span style="font-size: 3rem;">📦</span>
+                    <h5 class="font-weight-bold mt-3">No items listed yet</h5>
+                    <p class="text-muted mb-4">You currently don't have any products listed for sale.</p>
+                    <a asp-page="/Seller/AddProduct" class="btn-premium">Sell Your First Item</a>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-premium w-100 mb-0">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Format</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in Model.Products)
+                            {
+                                <tr>
+                                    <td>
+                                        <img src="@(string.IsNullOrEmpty(product.Images) ? "/images/default-product.png" : product.Images)" 
+                                             alt="Product Thumbnail" class="product-img" />
+                                    </td>
+                                    <td>
+                                        <div class="font-weight-semibold">@product.Title</div>
+                                        <div class="text-muted small" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @product.Description
+                                        </div>
+                                    </td>
+                                    <td>@product.CategoryName</td>
+                                    <td>
+                                        <span class="font-weight-bold">$@product.Price?.ToString("F2")</span>
+                                    </td>
+                                    <td>
+                                        @if (product.IsAuction == true)
+                                        {
+                                            <span class="format-badge badge-auction">Auction</span>
+                                            <div class="text-muted mt-1" style="font-size: 0.7rem;">
+                                                Ends: @product.AuctionEndTime?.ToString("g")
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="format-badge badge-buy-now">Buy It Now</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-page="/ProductDetail" asp-route-id="@product.Id" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            View Details
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

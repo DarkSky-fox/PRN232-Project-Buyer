@@ -16,7 +16,13 @@ public record LoginRequest(
 public record UpdateProfileRequest(
     int? UserId,
     string? Username,
-    string? AvatarUrl
+    string? AvatarUrl,
+    string? FullName,
+    string? Phone,
+    string? Street,
+    string? City,
+    string? State,
+    string? Country
 );
 
 // ─── Response DTOs ─────────────────────────────────────────────────────────
@@ -47,5 +53,11 @@ public record UserProfileResponse(
     string Email,
     string Role,
     string? AvatarUrl,
-    string? NewToken
+    string? NewToken,
+    string? FullName,
+    string? Phone,
+    string? Street,
+    string? City,
+    string? State,
+    string? Country
 );
