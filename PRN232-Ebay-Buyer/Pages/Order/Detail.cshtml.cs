@@ -54,6 +54,11 @@ public class DetailModel : PageModel
             return RedirectToPage("/Auth/Login");
         }
 
+        if (paid)
+        {
+            TempData["SuccessMessage"] = "Payment completed successfully via PayPal!";
+        }
+
         OrderId = id;
         var client = _httpClientFactory.CreateClient("AuthApi");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -104,6 +109,7 @@ public class DetailModel : PageModel
 
         return Page();
     }
+
 
     public async Task<IActionResult> OnPostCancelAsync()
     {
