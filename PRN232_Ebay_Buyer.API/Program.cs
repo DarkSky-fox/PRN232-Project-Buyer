@@ -1,12 +1,26 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PRN232_Ebay_Buyer.API.Models;
 using PRN232_Ebay_Buyer.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── 0. Instance ID (dùng để phân biệt instance trong load balancing) ─────────
+var instanceId = Environment.GetEnvironmentVariable("INSTANCE_ID") ?? "local-1";
+Console.WriteLine($"[Startup] Instance ID: {instanceId}, listening on: {builder.Configuration["ASPNETCORE_URLS"] ?? "default"}");
+
+// ── 0b. ForwardedHeaders (xử lý X-Forwarded-For, X-Forwarded-Proto từ Nginx) ─
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Cho phép Nginx (trong Docker network) forward headers
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // ── 1. DbContext ────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<CloneEbayDbContext>(options =>
@@ -74,14 +88,17 @@ builder.Services.AddControllers()
             JsonIgnoreCondition.WhenWritingNull;
     });
 
-// ── 5. CORS (cho phép Frontend gọi API) ─────────────────────────────────────
+// ── 5. CORS (cho phép Frontend gọi API qua Nginx và trực tiếp) ──────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var frontendUrl = builder.Configuration.GetValue<string>("FrontendUrl")
-            ?? "http://localhost:5000";
-        policy.WithOrigins(frontendUrl)
+        // Hỗ trợ cả URL trực tiếp lẫn qua Nginx
+        var frontendUrls = builder.Configuration
+            .GetSection("AllowedOrigins").Get<string[]>()
+            ?? [builder.Configuration.GetValue<string>("FrontendUrl") ?? "http://localhost:5000"];
+
+        policy.WithOrigins(frontendUrls)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -91,7 +108,17 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ── 6. HTTP pipeline ─────────────────────────────────────────────────────────
+// QUAN TRỌNG: UseForwardedHeaders phải gọi trước các middleware khác
+app.UseForwardedHeaders();
+
 app.UseCors("AllowFrontend");
+
+// Thêm Instance ID vào mọi response (dùng để debug load balancing)
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Instance-Id"] = instanceId;
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
