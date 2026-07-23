@@ -38,29 +38,38 @@
                 <h2 class="fw-bold mb-0">Order #@order.Id</h2>
                 <p class="text-muted mb-0">Placed on @(order.OrderDate?.ToString("MMMM dd, yyyy") ?? "-")</p>
             </div>
-            
-            @if (order.ReturnRequest == null)
-            {
-                if (order.Status == "Pending" || order.Status == "Processing" || order.Status == "Shipped")
+            <div class="d-flex align-items-center gap-2">
+                @if (order.Payment != null && order.Payment.Method == "PayPal" && order.Payment.Status != "Completed" && order.Payment.Status != "Paid" && order.Status != "Cancelled")
                 {
-                    <button class="btn btn-outline-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#cancelModal">
-                        Cancel Order
-                    </button>
+                    <a href="/Order/PaypalMock?orderId=@order.Id" class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-paypal me-1"></i> Pay Now with PayPal
+                    </a>
                 }
-                else if (order.Status == "Delivered")
+
+                @if (order.ReturnRequest == null)
                 {
-                    <button class="btn btn-outline-warning rounded-pill px-4 text-dark" data-bs-toggle="modal" data-bs-target="#returnModal">
-                        Return Items
-                    </button>
+                    if (order.Status == "Pending" || order.Status == "Pending Payment" || order.Status == "Processing" || order.Status == "Shipped")
+                    {
+                        <button class="btn btn-outline-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                            Cancel Order
+                        </button>
+                    }
+                    else if (order.Status == "Delivered")
+                    {
+                        <button class="btn btn-outline-warning rounded-pill px-4 text-dark" data-bs-toggle="modal" data-bs-target="#returnModal">
+                            Return Items
+                        </button>
+                    }
                 }
-            }
-            else
-            {
-                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
-                    <i class="bi bi-info-circle me-1"></i> @order.ReturnRequest.Type Request: @order.ReturnRequest.Status
-                </span>
-            }
+                else
+                {
+                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                        <i class="bi bi-info-circle me-1"></i> @order.ReturnRequest.Type Request: @order.ReturnRequest.Status
+                    </span>
+                }
+            </div>
         </div>
+
 
         <!-- Progress Timeline -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -211,14 +220,34 @@
                 {
                     <div class="card border-0 shadow-sm rounded-4">
                         <div class="card-body">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-credit-card-fill text-success me-2"></i>Payment Information</h6>
-                            <p class="mb-1 text-muted small">Method: <strong class="text-dark">@order.Payment.Method</strong></p>
-                            <p class="mb-0 text-muted small">Status: 
-                                <span class="badge @(order.Payment.Status == "Paid" || order.Payment.Status == "Completed" ? "bg-success" : "bg-warning text-dark")">@order.Payment.Status</span>
+                            <h6 class="fw-bold mb-3"><i class="bi bi-credit-card-fill text-primary me-2"></i>Payment Information</h6>
+                            <p class="mb-2 text-muted small">
+                                Method: 
+                                @if(order.Payment.Method == "PayPal") {
+                                    <span class="fw-bold text-primary"><i class="bi bi-paypal me-1"></i>PayPal</span>
+                                } else {
+                                    <strong class="text-dark">@order.Payment.Method</strong>
+                                }
                             </p>
+                            <p class="mb-2 text-muted small">Status: 
+                                <span class="badge @(order.Payment.Status == "Paid" || order.Payment.Status == "Completed" ? "bg-success" : (order.Payment.Status == "Cancelled" ? "bg-secondary" : "bg-warning text-dark"))">
+                                    @order.Payment.Status
+                                </span>
+                            </p>
+                            @if(order.Payment.PaidAt.HasValue) {
+                                <p class="mb-0 text-muted small"><i class="bi bi-clock-history me-1"></i>Paid at: @order.Payment.PaidAt.Value.ToString("g")</p>
+                            }
+                            else if(order.Payment.Method == "PayPal" && order.Payment.Status != "Completed" && order.Payment.Status != "Paid" && order.Status != "Cancelled") {
+                                <div class="mt-3">
+                                    <a href="/Order/PaypalMock?orderId=@order.Id" class="btn btn-sm btn-warning text-dark fw-bold w-100 rounded-pill">
+                                        <i class="bi bi-paypal me-1"></i> Pay Now with PayPal
+                                    </a>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
+
             </div>
         </div>
     }

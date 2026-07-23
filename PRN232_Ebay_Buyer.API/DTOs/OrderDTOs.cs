@@ -43,3 +43,33 @@ public class CheckoutRequest
     public string PaymentMethod { get; set; } = "COD";
     public List<CartItemDto> Items { get; set; } = new();
 }
+
+public class CheckoutResponse
+{
+    public int OrderId { get; set; }
+    public string PaymentMethod { get; set; } = string.Empty;
+    public string? PaypalRedirectUrl { get; set; }
+}
+
+public class PaypalCheckoutDetailsDto
+{
+    public int OrderId { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string PaymentStatus { get; set; } = string.Empty;
+    public string OrderStatus { get; set; } = string.Empty;
+    public DateTime? OrderDate { get; set; }
+    public List<CartItemDto> Items { get; set; } = new();
+    public AddressDto? Address { get; set; }
+}
+
+public class CapturePaypalPaymentRequest
+{
+    public int OrderId { get; set; }
+    public string? PayerEmail { get; set; }
+}
+
+public class CancelPaypalPaymentRequest
+{
+    public int OrderId { get; set; }
+}
+
