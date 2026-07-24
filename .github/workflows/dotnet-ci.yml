@@ -30,6 +30,6 @@ jobs:
     - name: Build solution
       run: dotnet build PRN232-Ebay-Buyer.sln --configuration Release --no-restore
 
-    # 5. Chạy Unit Tests (nếu sau này bạn thêm project Test)
+    # 5. Chạy Unit Tests 
     - name: Test solution
       run: dotnet test PRN232-Ebay-Buyer.sln --configuration Release --no-build --verbosity normal

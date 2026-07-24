@@ -42,6 +42,7 @@ public class CheckoutRequest
     public int AddressId { get; set; }
     public string PaymentMethod { get; set; } = "COD";
     public List<CartItemDto> Items { get; set; } = new();
+    public string? CouponCode { get; set; }
 }
 
 public class CheckoutResponse

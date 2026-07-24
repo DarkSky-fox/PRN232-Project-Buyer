@@ -102,7 +102,20 @@
             <div class="card shadow-sm border-0 bg-light">
                 <div class="card-body p-4">
                     <h5 class="card-title mb-4">Order Summary</h5>
+                    
+                    <div class="input-group mb-3">
+                        <input type="text" id="couponCodeInput" class="form-control" placeholder="Discount Code">
+                        <button class="btn btn-outline-secondary" type="button" onclick="applyCoupon()">Apply</button>
+                    </div>
+                    <div id="couponMessage" class="small mb-3"></div>
+
                     <div id="checkoutItems" class="mb-3"></div>
+                    
+                    <div class="d-flex justify-content-between mb-2 text-success d-none" id="discountRow">
+                         <span>Discount (<span id="discountPercentLabel">0</span>%)</span>
+                         <span id="checkoutDiscount">-$0.00</span>
+                    </div>
+                    
                     <hr>
                     <div class="d-flex justify-content-between mb-4">
                         <strong>Total</strong>
@@ -122,6 +135,10 @@
     <script>
         let selectedAddressId = @(Model.Addresses.FirstOrDefault(a => a.IsDefault)?.Id ?? Model.Addresses.FirstOrDefault()?.Id ?? 0);
         let jwtToken = document.cookie.match(new RegExp('(^| )BearerToken=([^;]+)'))?.[2];
+
+        let appliedCouponCode = null;
+        let appliedDiscountPercent = 0;
+        let currentSubtotal = 0;
 
         document.addEventListener('DOMContentLoaded', () => {
             renderCheckoutCart();
@@ -152,8 +169,65 @@
                     </div>
                 `;
             });
+            currentSubtotal = total;
             document.getElementById('checkoutItems').innerHTML = html;
-            document.getElementById('checkoutTotal').innerText = '$' + total.toFixed(2);
+            updateTotalDisplay();
+        }
+
+        function updateTotalDisplay() {
+            let discountRow = document.getElementById('discountRow');
+            let discountLabel = document.getElementById('discountPercentLabel');
+            let discountAmountEl = document.getElementById('checkoutDiscount');
+            
+            if (appliedDiscountPercent > 0) {
+                let discountAmount = currentSubtotal * (appliedDiscountPercent / 100);
+                discountLabel.innerText = appliedDiscountPercent;
+                discountAmountEl.innerText = '-$' + discountAmount.toFixed(2);
+                discountRow.classList.remove('d-none');
+                let finalTotal = currentSubtotal - discountAmount;
+                document.getElementById('checkoutTotal').innerText = '$' + finalTotal.toFixed(2);
+            } else {
+                discountRow.classList.add('d-none');
+                document.getElementById('checkoutTotal').innerText = '$' + currentSubtotal.toFixed(2);
+            }
+        }
+
+        async function applyCoupon() {
+            let code = document.getElementById('couponCodeInput').value.trim();
+            let msgEl = document.getElementById('couponMessage');
+            if(!code) {
+                 msgEl.innerText = 'Please enter a code.';
+                 msgEl.className = 'small mb-3 text-danger';
+                 return;
+            }
+            if(!jwtToken) return alert("Please login.");
+
+            msgEl.innerText = 'Validating...';
+            msgEl.className = 'small mb-3 text-info';
+
+            try {
+                let r = await fetch('http://localhost:5001/api/Order/validate-coupon?code=' + encodeURIComponent(code), {
+                    headers: { 'Authorization': 'Bearer ' + jwtToken }
+                });
+                let res = await r.json();
+                if (r.ok && res.valid) {
+                    appliedCouponCode = code;
+                    appliedDiscountPercent = res.discountPercent;
+                    msgEl.innerText = res.message || 'Coupon applied!';
+                    msgEl.className = 'small mb-3 text-success';
+                    updateTotalDisplay();
+                } else {
+                    appliedCouponCode = null;
+                    appliedDiscountPercent = 0;
+                    msgEl.innerText = res.message || 'Invalid coupon.';
+                    msgEl.className = 'small mb-3 text-danger';
+                    updateTotalDisplay();
+                }
+            } catch(er) {
+                console.error(er);
+                msgEl.innerText = 'Error validating coupon.';
+                msgEl.className = 'small mb-3 text-danger';
+            }
         }
 
         function getFormData() {
@@ -206,7 +280,8 @@
             let payload = {
                 AddressId: selectedAddressId,
                 PaymentMethod: selectedMethod,
-                Items: cart
+                Items: cart,
+                CouponCode: appliedCouponCode
             };
 
             document.getElementById('checkoutError').innerText = "Processing...";

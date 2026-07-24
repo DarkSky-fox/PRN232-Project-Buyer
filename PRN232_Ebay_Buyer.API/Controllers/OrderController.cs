@@ -81,6 +81,26 @@ public class OrderController : ControllerBase
         return Ok(new ApiResponse<int>(true, "Address created", address.Id));
     }
 
+    [HttpGet("validate-coupon")]
+    public async Task<IActionResult> ValidateCoupon([FromQuery] string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return BadRequest(new ApiResponse<string>(false, "Coupon code is required", null));
+
+        var coupon = await _context.Coupons.FirstOrDefaultAsync(c => c.Code == code);
+        
+        if (coupon == null)
+            return Ok(new { valid = false, message = "Invalid coupon code." });
+
+        if (coupon.StartDate.HasValue && coupon.StartDate.Value > DateTime.Now)
+            return Ok(new { valid = false, message = "Coupon is not yet active." });
+
+        if (coupon.EndDate.HasValue && coupon.EndDate.Value < DateTime.Now)
+            return Ok(new { valid = false, message = "Coupon has expired." });
+
+        return Ok(new { valid = true, discountPercent = coupon.DiscountPercent, message = "Coupon applied successfully!" });
+    }
+
     [HttpPost("checkout")]
     public async Task<IActionResult> Checkout([FromBody] CheckoutRequest req)
     {
@@ -94,6 +114,21 @@ public class OrderController : ControllerBase
 
         string paymentMethod = string.Equals(req.PaymentMethod, "PayPal", StringComparison.OrdinalIgnoreCase) ? "PayPal" : "COD";
         decimal total = req.Items.Sum(i => i.Price * i.Quantity);
+
+        if (!string.IsNullOrWhiteSpace(req.CouponCode))
+        {
+            var coupon = await _context.Coupons.FirstOrDefaultAsync(c => c.Code == req.CouponCode);
+            if (coupon != null &&
+                (!coupon.StartDate.HasValue || coupon.StartDate.Value <= DateTime.Now) &&
+                (!coupon.EndDate.HasValue || coupon.EndDate.Value >= DateTime.Now))
+            {
+                if (coupon.DiscountPercent.HasValue)
+                {
+                    decimal discount = total * (coupon.DiscountPercent.Value / 100m);
+                    total -= discount;
+                }
+            }
+        }
 
         string initialOrderStatus = paymentMethod == "PayPal" ? "Pending Payment" : "Pending";
 
